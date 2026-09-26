@@ -2,13 +2,15 @@
 // @name         B站智能选路 Bilibili Smart Route
 // @name:en      Bilibili Smart Route
 // @namespace    bili-smart-route
-// @version      1.0.0
+// @version      1.0.1
 // @description  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:en  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
 // @author       bili-smart-route contributors
 // @license      MIT
 // @homepageURL  https://github.com/GenjiM1n4moto/bili-smart-route
 // @supportURL   https://github.com/GenjiM1n4moto/bili-smart-route/issues
+// @downloadURL  https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js
+// @updateURL    https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js
 // @match        https://*.bilibili.com/*
 // @run-at       document-start
 // @grant        none
@@ -24,7 +26,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v1';
   const KB = 1024;

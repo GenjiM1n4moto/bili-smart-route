@@ -54,7 +54,7 @@ B 站给海外用户分配的是海外 CDN 节点（例如 `upos-sz-mirrorcosov`
 ## 安装
 
 1. 装好 [Tampermonkey](https://www.tampermonkey.net/) 或 [Violentmonkey](https://violentmonkey.github.io/)。Chrome 138+ 需要在扩展详情页打开「允许用户脚本」。
-2. 打开 [bili-smart-route.user.js 的 raw 链接](https://raw.githubusercontent.com/GenjiM1n4moto/bili-smart-route/main/bili-smart-route.user.js)，脚本管理器会弹出安装页；也可以在管理器里「新建脚本」，把文件内容粘贴进去保存。
+2. 点 **[安装最新版](https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js)**，脚本管理器会弹出安装页。这样装的脚本会跟着 [Releases](https://github.com/GenjiM1n4moto/bili-smart-route/releases) 自动更新。也可以在管理器里「新建脚本」，把文件内容粘贴进去保存，但这样不会自动更新。
 3. 如果装了 Bilibili Accelerator（realzza）之类同样改写视频请求的脚本，请关掉它，只留一个。
 
 ## 使用
@@ -133,7 +133,7 @@ What the script does:
 
 Measured in that environment, on a cold 29.7 Mbps AVC 4K video: 0 stalls, 0 of 1822 frames dropped, 30 s+ buffer ahead.
 
-Install with Tampermonkey or Violentmonkey (on Chrome 138+, enable "Allow User Scripts" for the extension), then open the [raw script](https://raw.githubusercontent.com/GenjiM1n4moto/bili-smart-route/main/bili-smart-route.user.js). Disable other scripts that rewrite Bilibili video requests. Settings live in `localStorage['bax.cfg.v1']` on `www.bilibili.com` (see the Chinese section for keys). The script collects nothing and only talks to Bilibili's own CDN hosts; `__BAX__.dump()` prints host names and stats only, no signed URLs.
+Install with Tampermonkey or Violentmonkey (on Chrome 138+, enable "Allow User Scripts" for the extension), then open the [latest release](https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js); installs from there auto-update with each release. Disable other scripts that rewrite Bilibili video requests. Settings live in `localStorage['bax.cfg.v1']` on `www.bilibili.com` (see the Chinese section for keys). The script collects nothing and only talks to Bilibili's own CDN hosts; `__BAX__.dump()` prints host names and stats only, no signed URLs.
 
 Known limits: tested mainly abroad on regular uploads at 1080p–4K; bangumi, courses, embedded players and mainland networks are not well tested; live streams are left alone. It depends on the current web player's main-thread XHR segment loading.
 
