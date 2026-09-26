@@ -8,7 +8,7 @@
 
 ## 适合谁
 
-在海外看 B 站、热门视频流畅但**冷门视频、老视频、4K 经常转圈**的人。国内网络下没有测试过，通常也不需要。
+在海外看 B 站、热门视频流畅但**冷门视频、老视频、4K 经常转圈**的人。开发者本人在**日本**开发和测试；其他地区 B 站分配的节点可能不同，效果也可能不同，欢迎反馈。国内网络下没有测试过，通常也不需要。
 
 ## 为什么冷门视频会卡
 
@@ -18,7 +18,7 @@ B 站给海外用户分配的是海外 CDN 节点（例如 `upos-sz-mirrorcosov`
 |---|---|
 | 海外节点**有缓存**（热门、有人看过） | 100–280 Mbps，首包 30–80 ms |
 | 海外节点**没缓存**（冷门、没人看过的片段） | 0.7–6 Mbps，要跨境回源 |
-| 大陆镜像（hw / ali / cos …，源站侧，一定有货） | 单连接 10–75 Mbps，首包 0.2–1 s，随时段波动大 |
+| 大陆镜像（hw / ali / cos …，源站侧，一定有货） | 单连接 10–75 Mbps，首包 0.1–2 s，随时段波动大 |
 
 4K 需要 7–30 Mbps。所以冷门视频落在海外节点上就必卡；而热门视频如果被强行换到大陆，反而更慢。
 
@@ -32,9 +32,18 @@ B 站给海外用户分配的是海外 CDN 节点（例如 `upos-sz-mirrorcosov`
 4. **多镜像并行 + 预读。** 大陆线路上的视频文件按 2 MB 分块，同时从最多 3 个镜像下载，并提前读约 20 秒（最多 64 MB），播放器来要数据时直接从内存交付。某一块 3 秒没进度就换镜像重下。
 5. **自动保护。** 播放器报错，或一分钟内并行下载失败 3 次，本页自动退回普通请求。
 
+## 测试环境
+
+- **地区**：日本，家庭宽带。开发者本人在日本完成全部开发和测试。
+- **浏览器**：Chrome + Tampermonkey 5.5，已登录大会员账号（可播 4K）。
+- **B 站分配的原生节点**：日本 IP 拿到的是 `upos-sz-mirrorcosov`（腾讯云海外）+ `upos-hz-mirrorakam`（Akamai），测试期间没有遇到 PCDN / P2P 节点。
+- **大陆镜像**：单连接 10–75 Mbps，首包 0.1–2 s。测试时段是大陆时间深夜（约 23:00–02:00），同一个镜像一小时内就从 60–75 Mbps 掉到 10–30 Mbps，跨境线路波动很大。
+
+其他地区（北美、欧洲、东南亚、港澳台）B 站给的原生节点、跨境线路都可能不一样。如果你在别的地区用，欢迎在 Issues 里反馈面板截图，帮助调整默认参数。
+
 ## 实测
 
-在一条海外家庭宽带上（大陆各镜像当时单连接约 10–30 Mbps）：
+在上面的日本环境里（大陆各镜像当时单连接约 10–30 Mbps）：
 
 | 视频 | 不装脚本 / 只换单个节点 | 本脚本 |
 |---|---|---|
@@ -110,7 +119,7 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 
 ## English
 
-**Bilibili Smart Route** is a userscript for watching Bilibili from outside mainland China. Popular videos are usually fine abroad; obscure ones and high-bitrate 4K stall. The cause is edge caching: Bilibili's overseas CDN edges deliver 100+ Mbps for cached content but only 0.7–6 Mbps on a cache miss, while mainland mirrors always have the file but pay cross-border latency (0.2–1 s per request, 10–75 Mbps per connection).
+**Bilibili Smart Route** is a userscript for watching Bilibili from outside mainland China. Popular videos are usually fine abroad; obscure ones and high-bitrate 4K stall. The cause is edge caching: Bilibili's overseas CDN edges deliver 100+ Mbps for cached content but only 0.7–6 Mbps on a cache miss, while mainland mirrors always have the file but pay cross-border latency (0.1–2 s per request, 10–75 Mbps per connection).
 
 What the script does:
 
@@ -120,7 +129,9 @@ What the script does:
 4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once with ~20 s (≤64 MB) read-ahead; the player's requests are answered from memory. Blocks that stall for 3 s are re-fetched elsewhere.
 5. **Safety net.** If the player errors or parallel fetches keep failing, the page falls back to plain requests.
 
-Measured on a home connection abroad, on a cold 29.7 Mbps AVC 4K video: 0 stalls, 0 of 1822 frames dropped, 30 s+ buffer ahead.
+**Test environment.** Developed and tested in **Japan** on a home broadband connection, with Chrome + Tampermonkey 5.5 and a premium account (4K). For Japanese IPs, Bilibili assigns `upos-sz-mirrorcosov` (Tencent Cloud overseas) and `upos-hz-mirrorakam` (Akamai); no PCDN/P2P nodes were seen. Mainland mirrors gave 10–75 Mbps per connection with 0.1–2 s first-byte latency; tests ran late at night mainland time (about 23:00–02:00), and the same mirror dropped from 60–75 to 10–30 Mbps within an hour. Other regions may be assigned different edges and see different results — reports from elsewhere are welcome in Issues.
+
+Measured in that environment, on a cold 29.7 Mbps AVC 4K video: 0 stalls, 0 of 1822 frames dropped, 30 s+ buffer ahead.
 
 Install with Tampermonkey or Violentmonkey (on Chrome 138+, enable "Allow User Scripts" for the extension), then open the [raw script](https://raw.githubusercontent.com/GenjiM1n4moto/bili-smart-route/main/bili-smart-route.user.js). Disable other scripts that rewrite Bilibili video requests. Settings live in `localStorage['bax.cfg.v1']` on `www.bilibili.com` (see the Chinese section for keys). The script collects nothing and only talks to Bilibili's own CDN hosts; `__BAX__.dump()` prints host names and stats only, no signed URLs.
 
