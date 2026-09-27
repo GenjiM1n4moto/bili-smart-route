@@ -1,8 +1,10 @@
 # B站智能选路 · Bilibili Smart Route
 
+**简体中文** | [English](README.en.md) | [日本語](README.ja.md)
+
 **海外看 B 站，冷门视频和高码率 4K 不再卡。** 一个 Tampermonkey / Violentmonkey 用户脚本：按每个视频文件实测 CDN 缓存的冷热，有缓存就走 B 站原生海外节点，没有就改走大陆镜像，并用多镜像并行 + 预读把跨境带宽用满。
 
-[English](#english) · MIT License
+MIT License
 
 ---
 
@@ -53,9 +55,10 @@ B 站给海外用户分配的是海外 CDN 节点（例如 `upos-sz-mirrorcosov`
 
 ## 安装
 
-1. 装好 [Tampermonkey](https://www.tampermonkey.net/) 或 [Violentmonkey](https://violentmonkey.github.io/)。Chrome 138+ 需要在扩展详情页打开「允许用户脚本」。
-2. 点 **[安装最新版](https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js)**，脚本管理器会弹出安装页。这样装的脚本会跟着 [Releases](https://github.com/GenjiM1n4moto/bili-smart-route/releases) 自动更新。也可以在管理器里「新建脚本」，把文件内容粘贴进去保存，但这样不会自动更新。
-3. 如果装了 Bilibili Accelerator（realzza）之类同样改写视频请求的脚本，请关掉它，只留一个。
+1. 装好 [Tampermonkey](https://www.tampermonkey.net/) 或 [Violentmonkey](https://violentmonkey.github.io/)。
+2. **Chrome / Edge 138 及以后必做：** 打开 `chrome://extensions`（Edge 是 `edge://extensions`）→ 找到篡改猴 →「详细信息」→ 打开 **「允许用户脚本」（Allow User Scripts）**。这个开关没开，所有用户脚本都不会运行（篡改猴图标上也会有提示）。
+3. 点 **[安装最新版](https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js)**，脚本管理器会弹出安装页。这样装的脚本会跟着 [Releases](https://github.com/GenjiM1n4moto/bili-smart-route/releases) 自动更新。也可以在管理器里「新建脚本」，把文件内容粘贴进去保存，但这样不会自动更新。
+4. 如果装了 Bilibili Accelerator（realzza）之类同样改写视频请求的脚本，请关掉它，只留一个。
 
 ## 使用
 
@@ -68,7 +71,20 @@ B 站给海外用户分配的是海外 CDN 节点（例如 `upos-sz-mirrorcosov`
 
 **4K 建议：** 在播放器设置里把视频编码偏好改成 AV1 或 HEVC。同一个 4K 视频，AVC 要 17–30 Mbps，AV1/HEVC 只要 6–13 Mbps。
 
+## 常见问题
+
+**左下角没有 ⚡ 标签？** 按顺序检查：
+
+1. **「允许用户脚本」开了吗？** Chrome / Edge 138 及以后，扩展详情页里的「允许用户脚本」（Allow User Scripts）不打开，脚本完全不会运行。见上面安装第 2 步。
+2. **脚本启用了吗？** 在 B 站视频页点工具栏的篡改猴图标，菜单里应该有「B站智能选路」且开关是绿色的。
+3. **网址对吗？** 脚本只在 `bilibili.com` 下运行，国际版 `bilibili.tv` 不支持。
+4. **还是不确定？** 在视频页按 F12 打开控制台，输入 `window.__BAX__ && __BAX__.version`：
+   - 显示版本号：脚本在运行，标签只是比较淡，鼠标移到左下角会变清楚；
+   - 显示 `undefined`：脚本没有运行，回到第 1、2 步。
+
 ## 设置
+
+**不需要做任何设置。** 下面列的就是默认值，装好即按这些值运行。想改哪项，只写哪项即可，例如 `JSON.stringify({ readAheadMaxMB: 128 })`。设置保存在 B 站网站的浏览器存储里，重装或更新脚本都不会丢。
 
 在 `www.bilibili.com` 的控制台里执行，然后刷新：
 
@@ -77,14 +93,14 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
   multi: true,          // 大陆线路多镜像并行 + 预读
   multiHosts: 3,        // 同时使用的大陆镜像数
   readAheadSec: 20,     // 预读多少秒
-  readAheadMaxMB: 64,   // 预读上限
-  storeCapMB: 192,      // 每个标签页用于缓存视频块的内存上限
+  readAheadMaxMB: 64,   // 预读上限（MB）
+  storeCapMB: 192,      // 每个标签页用于缓存视频块的内存上限（MB）
   hotMinMbps: 12,       // 原生节点测速高于此值（且足够当前码率）才算"有缓存"
   ui: true              // 是否显示左下角标签
 }));
 ```
 
-只写想改的项即可。`{"enabled": false}` 可完全停用（面板里也能一键暂停）。
+`{"enabled": false}` 可完全停用（面板里也能一键暂停）。
 
 ## 流量与资源
 
@@ -113,28 +129,6 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 
 思路受 [realzza/bilibili-accelerator](https://github.com/realzza/bilibili-accelerator)（MIT）启发，本项目代码独立编写。
 
----
+## 许可证
 
-<a id="english"></a>
-
-## English
-
-**Bilibili Smart Route** is a userscript for watching Bilibili from outside mainland China. Popular videos are usually fine abroad; obscure ones and high-bitrate 4K stall. The cause is edge caching: Bilibili's overseas CDN edges deliver 100+ Mbps for cached content but only 0.7–6 Mbps on a cache miss, while mainland mirrors always have the file but pay cross-border latency (0.1–2 s per request, 10–75 Mbps per connection).
-
-What the script does:
-
-1. **Per-file decision, probing the end of the range.** Before the first large segment of a file, it probes the *tail* of that exact range on the native edges. Cached → stay native (popular videos are untouched).
-2. **Lookahead.** While on a native edge, it keeps probing ~15 s ahead of playback and switches before a cold region stalls the player.
-3. **Mainland fallback.** Official UPOS mirrors (shared signatures), ranked by measured effective throughput including TTFB, verified before use.
-4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once with ~20 s (≤64 MB) read-ahead; the player's requests are answered from memory. Blocks that stall for 3 s are re-fetched elsewhere.
-5. **Safety net.** If the player errors or parallel fetches keep failing, the page falls back to plain requests.
-
-**Test environment.** Developed and tested in **Japan** on a home broadband connection, with Chrome + Tampermonkey 5.5 and a premium account (4K). For Japanese IPs, Bilibili assigns `upos-sz-mirrorcosov` (Tencent Cloud overseas) and `upos-hz-mirrorakam` (Akamai); no PCDN/P2P nodes were seen. Mainland mirrors gave 10–75 Mbps per connection with 0.1–2 s first-byte latency; tests ran late at night mainland time (about 23:00–02:00), and the same mirror dropped from 60–75 to 10–30 Mbps within an hour. Other regions may be assigned different edges and see different results — reports from elsewhere are welcome in Issues.
-
-Measured in that environment, on a cold 29.7 Mbps AVC 4K video: 0 stalls, 0 of 1822 frames dropped, 30 s+ buffer ahead.
-
-Install with Tampermonkey or Violentmonkey (on Chrome 138+, enable "Allow User Scripts" for the extension), then open the [latest release](https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js); installs from there auto-update with each release. Disable other scripts that rewrite Bilibili video requests. Settings live in `localStorage['bax.cfg.v1']` on `www.bilibili.com` (see the Chinese section for keys). The script collects nothing and only talks to Bilibili's own CDN hosts; `__BAX__.dump()` prints host names and stats only, no signed URLs.
-
-Known limits: tested mainly abroad on regular uploads at 1080p–4K; bangumi, courses, embedded players and mainland networks are not well tested; live streams are left alone. It depends on the current web player's main-thread XHR segment loading.
-
-Inspired by [realzza/bilibili-accelerator](https://github.com/realzza/bilibili-accelerator) (MIT); the code is written independently. Licensed under MIT.
+[MIT](LICENSE)
