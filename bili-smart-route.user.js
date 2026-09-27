@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         B站智能选路 Bilibili Smart Route
 // @name:en      Bilibili Smart Route
+// @name:ja      Bilibili Smart Route
 // @namespace    bili-smart-route
-// @version      1.0.1
+// @version      1.1.0
 // @description  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:en  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
+// @description:ja  海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。
 // @author       bili-smart-route contributors
 // @license      MIT
 // @homepageURL  https://github.com/GenjiM1n4moto/bili-smart-route
@@ -26,7 +28,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.0.1';
+  const VERSION = '1.1.0';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v1';
   const KB = 1024;
@@ -49,6 +51,7 @@
   const DEFAULTS = {
     enabled: true,
     ui: true,
+    lang: 'auto',          // panel language: auto (browser) | zh | en | ja
     raceMinMbps: 1,        // files below this bitrate (audio, low-res) skip pre-probing
     hotMinMbps: 12,        // a native edge probing above this is "cached"; cold edges do 0.7–6
     raceTimeoutMs: 1500,   // longest a segment waits for the probe race
@@ -84,6 +87,79 @@
   const xSetHeader = XP.setRequestHeader;
   const xAbort = XP.abort;
   const now = () => performance.now();
+
+  // ---- i18n -----------------------------------------------------------------
+
+  const I18N = {
+    zh: {
+      brand: 'B站智能选路', idle: '智能选路', paused: '已暂停',
+      native: '原生', mainland: '大陆', direct: '直连',
+      files: '当前文件', noVideo: '还没有视频请求',
+      mirrors: '大陆镜像（实测有效吞吐，含首包延迟）', untested: '未测', ttfb: '首包',
+      log: '切换记录', none: '暂无',
+      autoOff: '本页已自动停用多镜像：',
+      pause: '暂停脚本（刷新）', resume: '启用脚本（刷新）',
+      multi: '多镜像并行：', on: '开', off: '关', reset: '清空镜像统计',
+      ev: { native: '原生', mainland: '大陆', fail: '失败', timeout: '超时', stall: '卡住', storeFail: '并行失败', guard: '保护' },
+      stallInfo: mb => '块 @' + mb + 'MB 换源',
+      whyFails: () => '一分钟内 3 次并行下载失败',
+      whyMedia: code => '播放器报错 (MediaError ' + code + ')',
+      guardInfo: r => '本页停用多镜像：' + tr(r)
+    },
+    en: {
+      brand: 'Bilibili Smart Route', idle: 'Smart Route', paused: 'Paused',
+      native: 'Native', mainland: 'Mainland', direct: 'Direct',
+      files: 'Current files', noVideo: 'No video requests yet',
+      mirrors: 'Mainland mirrors (measured effective throughput, incl. first-byte latency)', untested: 'untested', ttfb: 'TTFB',
+      log: 'Switch log', none: 'Nothing yet',
+      autoOff: 'Parallel mirrors turned off on this page: ',
+      pause: 'Pause script (reload)', resume: 'Enable script (reload)',
+      multi: 'Parallel mirrors: ', on: 'on', off: 'off', reset: 'Reset mirror stats',
+      ev: { native: 'native', mainland: 'mainland', fail: 'failed', timeout: 'timeout', stall: 'stalled', storeFail: 'parallel failed', guard: 'guard' },
+      stallInfo: mb => 'block @' + mb + 'MB re-fetched elsewhere',
+      whyFails: () => '3 parallel fetch failures within a minute',
+      whyMedia: code => 'player error (MediaError ' + code + ')',
+      guardInfo: r => 'parallel mirrors off on this page: ' + tr(r)
+    },
+    ja: {
+      brand: 'Bilibili Smart Route', idle: 'スマートルート', paused: '一時停止中',
+      native: 'ネイティブ', mainland: '本土', direct: '直結',
+      files: '現在のファイル', noVideo: 'まだ動画のリクエストがありません',
+      mirrors: '本土ミラー（実測の実効スループット、最初のバイトまでの遅延込み）', untested: '未測定', ttfb: '初回応答',
+      log: '切り替え履歴', none: 'まだありません',
+      autoOff: 'このページでは複数ミラーを自動停止しました：',
+      pause: 'スクリプトを一時停止（再読み込み）', resume: 'スクリプトを有効化（再読み込み）',
+      multi: '複数ミラー並列：', on: 'オン', off: 'オフ', reset: 'ミラー統計をリセット',
+      ev: { native: 'ネイティブ', mainland: '本土', fail: '失敗', timeout: 'タイムアウト', stall: '停滞', storeFail: '並列失敗', guard: '保護' },
+      stallInfo: mb => 'ブロック @' + mb + 'MB を別ミラーで再取得',
+      whyFails: () => '1 分以内に並列取得が 3 回失敗',
+      whyMedia: code => 'プレーヤーエラー (MediaError ' + code + ')',
+      guardInfo: r => 'このページでは複数ミラーを停止：' + tr(r)
+    }
+  };
+
+  // Explicit choice wins; otherwise the first of the browser's preferred
+  // languages that we have, falling back to English.
+  function uiLang() {
+    if (I18N[cfg.lang]) return cfg.lang;
+    const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''])
+      .map(s => String(s).toLowerCase());
+    for (const p of prefs) {
+      if (p.indexOf('zh') === 0) return 'zh';
+      if (p.indexOf('ja') === 0) return 'ja';
+      if (p.indexOf('en') === 0) return 'en';
+    }
+    return 'en';
+  }
+  const L = () => I18N[uiLang()];
+
+  // Log entries keep keys, not text, so switching language re-renders old ones.
+  function tr(x) {
+    if (!x) return '';
+    if (typeof x === 'string') return x;
+    const v = L()[x.k];
+    return typeof v === 'function' ? v.apply(null, x.a || []) : (v || x.k);
+  }
 
   // ---- log ------------------------------------------------------------------
 
@@ -233,7 +309,7 @@
   function markFailed(fs, h, ms, why) {
     fs.failed.set(h, now() + ms);
     fs.verified.delete(h);
-    log(fs, '失败', h, why);
+    log(fs, 'fail', h, why);
   }
 
   function codecName(c) {
@@ -471,7 +547,7 @@
       fs.lastLookAt = -Infinity; // look ahead on the very next request
       if (fs.store) fs.store.raEnd = -1; // stop mainland read-ahead
     }
-    if (!prev || prev.host !== host) log(fs, cls === 'native' ? '原生' : '大陆', host, why);
+    if (!prev || prev.host !== host) log(fs, cls, host, why);
   }
 
   function startRace(fs, reqU, range, reason) {
@@ -673,7 +749,7 @@
 
     if (m.timedOut || (status === 0 && loaded > 0)) {
       recordStat(host, loaded, dur, m.tHead ? m.tHead - m.tSend : null);
-      log(fs, '超时', host, (loaded / MB).toFixed(1) + 'MB/' + (dur / 1000).toFixed(1) + 's');
+      log(fs, 'timeout', host, (loaded / MB).toFixed(1) + 'MB/' + (dur / 1000).toFixed(1) + 's');
       // Judged on the host's decayed record (this timeout already dragged it
       // down): one cross-border hiccup must not push a 60 Mbps mirror aside
       // for one that cannot finish a 4K segment inside the player's 10 s.
@@ -893,7 +969,7 @@
       fs.verified.add(x.h);
       fs.multiHosts = st.hosts.filter(o => o.bytes > 0 && !o.dead).map(o => o.h);
       fs.multiAt = now();
-      fs.multiUsed = st.hosts.map(o => shortHost(o.h) + ' ' + (o.bytes / MB).toFixed(0) + 'MB' + (o.dead ? '(停)' : '')).join(' + ');
+      fs.multiUsed = st.hosts.map(o => shortHost(o.h) + ' ' + (o.bytes / MB).toFixed(0) + 'MB' + (o.dead ? '(dead)' : '')).join(' + ');
       Array.from(st.waiters).forEach(w => checkWaiter(fs, w));
       evict();
       schedule(fs);
@@ -919,7 +995,7 @@
           r.x.strikes += 1;
           if (r.x.strikes >= 3) { r.x.dead = true; markFailed(fs, r.x.h, 60e3, 'stalls'); }
           recordStat(r.x.h, r.bytes, t - r.t0, null);
-          if (b.need) log(fs, '卡住', r.x.h, '块 @' + (b.s / MB).toFixed(0) + 'MB 换源');
+          if (b.need) log(fs, 'stall', r.x.h, { k: 'stallInfo', a: [(b.s / MB).toFixed(0)] });
         }
       });
     });
@@ -967,10 +1043,10 @@
     if (!st.waiters.has(w)) return;
     st.waiters.delete(w);
     releaseNeed(st, w);
-    log(fs, '并行失败', '', why);
+    log(fs, 'storeFail', '', why);
     storeFails.push(now());
     while (storeFails.length && now() - storeFails[0] > 60e3) storeFails.shift();
-    if (storeFails.length >= 3) autoOffMulti('一分钟内 3 次并行下载失败');
+    if (storeFails.length >= 3) autoOffMulti({ k: 'whyFails' });
     try { w.onFail(why); } catch (_) {}
   }
 
@@ -978,21 +1054,21 @@
   // player reads it; if that ever changes, or the store keeps failing, stop
   // doing it for the rest of this page and let every request go out natively.
   let lastStoreServe = -Infinity;
-  let multiAutoOff = '';
+  let multiAutoOff = null; // { k, a } reason, rendered in the current language
   const storeFails = [];
 
-  function autoOffMulti(why) {
+  function autoOffMulti(reason) {
     if (!cfg.multi) return;
     cfg.multi = false; // this page only; the saved setting is untouched
-    multiAutoOff = why;
-    log(null, '保护', '', '本页停用多镜像：' + why);
+    multiAutoOff = reason;
+    log(null, 'guard', '', { k: 'guardInfo', a: [reason] });
   }
 
   try {
     document.addEventListener('error', function (e) {
       const t = e.target;
       if (t && t.tagName === 'VIDEO' && t.error && now() - lastStoreServe < 30e3) {
-        autoOffMulti('播放器报错 (MediaError ' + t.error.code + ')');
+        autoOffMulti({ k: 'whyMedia', a: [t.error.code] });
       }
     }, true);
   } catch (_) {}
@@ -1362,12 +1438,25 @@
       'button{font:12px system-ui,"Microsoft YaHei",sans-serif;background:#2b323d;color:#e8edf2;border:0;border-radius:6px;padding:4px 10px;margin-right:6px;cursor:pointer}' +
       'button:hover{background:#38414d}' +
       '.log{font:11px/1.4 ui-monospace,Consolas,monospace;white-space:pre-wrap;color:#b9c3ce}' +
-      '</style><div class="wrap"><div class="panel"></div><div class="pill"><span class="dot"></span><span class="txt">⚡ 智能选路</span></div></div>';
+      '.hd{display:flex;align-items:center;gap:6px}' +
+      '.lang{margin-left:auto;display:inline-flex;gap:2px}' +
+      '.lang button{margin:0;padding:1px 7px;font-size:11px;border-radius:5px}' +
+      '.lang button.on{background:#00aeec;color:#fff}' +
+      '.btns{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}.btns button{margin:0}' +
+      '</style><div class="wrap"><div class="panel"></div><div class="pill"><span class="dot"></span><span class="txt"></span></div></div>';
+    root.querySelector('.txt').textContent = '⚡ ' + L().idle;
     root.querySelector('.pill').addEventListener('click', function () {
       panelOpen = !panelOpen;
       render();
     });
     root.querySelector('.panel').addEventListener('click', function (e) {
+      const lang = e.target && e.target.getAttribute && e.target.getAttribute('data-lang');
+      if (lang && I18N[lang]) {
+        saveJson(CFG_KEY, Object.assign({}, loadJson(CFG_KEY) || {}, { lang }));
+        cfg.lang = lang;
+        render();
+        return;
+      }
       const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
       if (act === 'toggle') {
         const next = Object.assign({}, loadJson(CFG_KEY) || {}, { enabled: !cfg.enabled });
@@ -1378,7 +1467,7 @@
         const next = saved.multi === false; // toggle the saved value
         saveJson(CFG_KEY, Object.assign({}, saved, { multi: next }));
         cfg.multi = next;
-        multiAutoOff = '';
+        multiAutoOff = null;
         render();
       } else if (act === 'reset') {
         Object.keys(stats).forEach(k => delete stats[k]);
@@ -1399,9 +1488,10 @@
     const cls = fs && fs.route ? fs.route.cls : '';
     wrap.className = 'wrap ' + cls + (panelOpen ? ' open' : '');
     const rate = fs && fsRate(fs);
-    root.querySelector('.txt').textContent = !cfg.enabled ? '⚡ 已暂停'
-      : !fs ? '⚡ 智能选路'
-        : '⚡ ' + (cls === 'mainland' ? '大陆 ' : cls === 'native' ? '原生 ' : '') + routeName(fs) +
+    const T = L();
+    root.querySelector('.txt').textContent = !cfg.enabled ? '⚡ ' + T.paused
+      : !fs ? '⚡ ' + T.idle
+        : '⚡ ' + (cls === 'mainland' ? T.mainland + ' ' : cls === 'native' ? T.native + ' ' : '') + routeName(fs) +
           (rate ? ' · ' + rate.toFixed(0) + ' Mbps' : '');
     if (!panelOpen) return;
 
@@ -1414,25 +1504,29 @@
       return '<tr><td>' + esc(f.label || f.path.split('/').pop()) + '</td>' +
         '<td class="muted">' + (f.bw ? (f.bw / 1e6).toFixed(1) + 'M' : '?') + '</td>' +
         '<td class="' + (c === 'native' ? 'good' : c === 'mainland' ? 'warn' : 'muted') + '">' +
-        (c === 'native' ? '原生 ' : c === 'mainland' ? '大陆 ' : '直连 ') + esc(routeName(f)) + '</td>' +
+        (c === 'native' ? T.native : c === 'mainland' ? T.mainland : T.direct) + ' ' + esc(routeName(f)) + '</td>' +
         '<td>' + (r ? r.toFixed(1) + ' Mbps' : '') + '</td></tr>';
     }).join('');
     const ml = cfg.mainland.map(function (h) {
       const r = statRate(h);
       const s = stats[h];
-      return '<tr><td>' + shortHost(h) + '</td><td>' + (s && s.n >= 3 ? r.toFixed(1) + ' Mbps' : '未测') +
-        '</td><td class="muted">' + (s && s.ttfb != null ? '首包 ' + s.ttfb.toFixed(0) + ' ms' : '') + '</td></tr>';
+      return '<tr><td>' + shortHost(h) + '</td><td>' + (s && s.n >= 3 ? r.toFixed(1) + ' Mbps' : T.untested) +
+        '</td><td class="muted">' + (s && s.ttfb != null ? T.ttfb + ' ' + s.ttfb.toFixed(0) + ' ms' : '') + '</td></tr>';
     }).join('');
-    const lg = logs.slice(-14).reverse().map(l => esc(l.t + ' ' + l.ev + ' ' + l.h + '  ' + l.f + '  ' + l.info)).join('\n');
+    const lg = logs.slice(-14).reverse()
+      .map(l => esc(l.t + ' ' + (T.ev[l.ev] || l.ev) + ' ' + l.h + '  ' + l.f + '  ' + tr(l.info))).join('\n');
+    const cur = uiLang();
+    const langs = [['zh', '中'], ['en', 'EN'], ['ja', '日']]
+      .map(p => '<button data-lang="' + p[0] + '"' + (p[0] === cur ? ' class="on"' : '') + '>' + p[1] + '</button>').join('');
     root.querySelector('.panel').innerHTML =
-      '<div><b>B站智能选路</b> <span class="muted">v' + VERSION + '</span></div>' +
-      '<h4>当前文件</h4><table>' + (rows || '<tr><td class="muted">还没有视频请求</td></tr>') + '</table>' +
-      '<h4>大陆镜像（实测有效吞吐，含首包延迟）</h4><table>' + ml + '</table>' +
-      '<h4>切换记录</h4><div class="log">' + (lg || '<span class="muted">暂无</span>') + '</div>' +
-      (multiAutoOff ? '<div class="warn" style="margin-top:6px">本页已自动停用多镜像：' + esc(multiAutoOff) + '</div>' : '') +
-      '<div style="margin-top:8px"><button data-act="toggle">' + (cfg.enabled ? '暂停脚本（刷新）' : '启用脚本（刷新）') + '</button>' +
-      '<button data-act="multi">多镜像并行：' + ((loadJson(CFG_KEY) || {}).multi === false ? '关' : '开') + '</button>' +
-      '<button data-act="reset">清空镜像统计</button></div>';
+      '<div class="hd"><b>' + T.brand + '</b> <span class="muted">v' + VERSION + '</span><span class="lang">' + langs + '</span></div>' +
+      '<h4>' + T.files + '</h4><table>' + (rows || '<tr><td class="muted">' + T.noVideo + '</td></tr>') + '</table>' +
+      '<h4>' + T.mirrors + '</h4><table>' + ml + '</table>' +
+      '<h4>' + T.log + '</h4><div class="log">' + (lg || '<span class="muted">' + T.none + '</span>') + '</div>' +
+      (multiAutoOff ? '<div class="warn" style="margin-top:6px">' + T.autoOff + esc(tr(multiAutoOff)) + '</div>' : '') +
+      '<div class="btns"><button data-act="toggle">' + (cfg.enabled ? T.pause : T.resume) + '</button>' +
+      '<button data-act="multi">' + T.multi + ((loadJson(CFG_KEY) || {}).multi === false ? T.off : T.on) + '</button>' +
+      '<button data-act="reset">' + T.reset + '</button></div>';
   }
 
   function uiLoop() {

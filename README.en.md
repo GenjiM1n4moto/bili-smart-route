@@ -62,12 +62,12 @@ In the Japanese environment above (mainland mirrors were at about 10–30 Mbps p
 
 ## Usage
 
-Open any video and a translucent **⚡** label appears at the bottom left. The on-page label and panel are in Chinese:
+Open any video and a translucent **⚡** label appears at the bottom left. The label and panel come in Chinese, English and Japanese; they follow the browser language by default, and 「中 / EN / 日」 at the top right of the panel switches them (the choice is remembered):
 
-- 🟢 **原生** (native): the overseas edge has it cached; direct.
-- 🟠 **大陆** (mainland): switched to mainland mirrors; with several mirrors it shows e.g. `hw+ali`.
+- 🟢 **Native**: the overseas edge has it cached; direct.
+- 🟠 **Mainland**: switched to mainland mirrors; with several mirrors it shows e.g. `hw+ali`.
 
-Click it to open the panel: the current file's route and speed, measured throughput of each mainland mirror, the switch log, and three buttons — 「暂停脚本」 (pause script), 「多镜像并行 开/关」 (parallel mirrors on/off) and 「清空镜像统计」 (reset mirror stats). The label hides in fullscreen.
+Click it to open the panel: the current file's route and speed, measured throughput of each mainland mirror, the switch log, and three buttons — **Pause script**, **Parallel mirrors: on/off** and **Reset mirror stats**. The label hides in fullscreen.
 
 **4K tip:** in the player settings, set the preferred video codec to AV1 or HEVC. The same 4K video needs 17–30 Mbps in AVC but only 6–13 Mbps in AV1/HEVC.
 
@@ -76,7 +76,7 @@ Click it to open the panel: the current file's route and speed, measured through
 **No ⚡ label at the bottom left?** Check, in order:
 
 1. **Is "Allow User Scripts" on?** On Chrome / Edge 138 and later, if "Allow User Scripts" is off on the extension's Details page, the script does not run at all. See step 2 of Install.
-2. **Is the script enabled?** On a Bilibili video page, click the Tampermonkey icon in the toolbar; the menu should list "B站智能选路 Bilibili Smart Route" with its switch on (green).
+2. **Is the script enabled?** On a Bilibili video page, click the Tampermonkey icon in the toolbar; the menu should list "Bilibili Smart Route" (shown as "B站智能选路" in a Chinese browser) with its switch on (green).
 3. **Right site?** The script runs only on `bilibili.com`; the international site `bilibili.tv` is not supported.
 4. **Still not sure?** On a video page, press F12 to open the console and enter `window.__BAX__ && __BAX__.version`:
    - prints a version number: the script is running; the label is just faint and becomes clear when you hover the bottom-left corner;
@@ -96,7 +96,8 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
   readAheadMaxMB: 64,   // read-ahead cap (MB)
   storeCapMB: 192,      // memory per tab for fetched video blocks (MB)
   hotMinMbps: 12,       // a native edge probing above this (and enough for the bitrate) counts as cached
-  ui: true              // show the bottom-left label
+  ui: true,             // show the bottom-left label
+  lang: 'auto'          // panel language: auto (follow the browser) | zh | en | ja
 }));
 ```
 
@@ -120,11 +121,10 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 - Depends on the current web player loading segments via main-thread XHR; a Bilibili player update could break it (the safety net falls back to plain requests).
 - Bilibili only loads video while the tab is visible; stalls in background tabs are unrelated to this script.
 - The mainland mirror list is hard-coded and needs updating if a host goes away.
-- The on-page label and panel are Chinese only.
 
 ## Reporting issues
 
-Please open an [issue](https://github.com/GenjiM1n4moto/bili-smart-route/issues) with the video's BV id, the quality and codec, and a screenshot of the panel's switch log (「切换记录」) or the output of `JSON.stringify(__BAX__.dump())` from the console.
+Please open an [issue](https://github.com/GenjiM1n4moto/bili-smart-route/issues) with the video's BV id, the quality and codec, and a screenshot of the panel's **Switch log** or the output of `JSON.stringify(__BAX__.dump())` from the console.
 
 ## Acknowledgements
 
