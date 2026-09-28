@@ -3,7 +3,7 @@
 // @name:en      Bilibili Smart Route
 // @name:ja      Bilibili Smart Route
 // @namespace    bili-smart-route
-// @version      1.1.0
+// @version      1.2.0
 // @description  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:en  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
 // @description:ja  海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。
@@ -28,9 +28,9 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
   const CFG_KEY = 'bax.cfg.v1';
-  const STATS_KEY = 'bax.stats.v1';
+  const STATS_KEY = 'bax.stats.v2';
   const KB = 1024;
   const MB = 1024 * 1024;
 
@@ -223,33 +223,52 @@
 
   // ---- host stats (mainland ranking) ---------------------------------------
 
+  // v1 recorded per-block rates, which read about half the real rate whenever
+  // two blocks shared a mirror's connection; those numbers pushed good mirrors
+  // below the cut-off for good, so they are dropped rather than migrated.
+  try { localStorage.removeItem('bax.stats.v1'); } catch (_) {}
   const stats = loadJson(STATS_KEY) || {};
   let statsDirty = false;
 
-  // Bytes-weighted, exponentially decayed effective throughput, TTFB included:
-  // that is the real cost of a segment request, and it is what separates a
-  // mainland mirror with 1 s of latency from one with 0.2 s.
-  function recordStat(host, bytes, durMs, ttfbMs) {
-    const s = stats[host] || (stats[host] = { b: 0, d: 0, ttfb: null, n: 0, at: 0 });
-    if (durMs > 0) {
-      s.b = s.b * 0.85 + bytes;
-      s.d = s.d * 0.85 + durMs;
+  // Per-mirror EWMA of measured throughput (Mbps) and time to first byte (ms).
+  // Callers pass a host-level rate: for the block store that is bytes over the
+  // union of that mirror's busy time, so parallel blocks are not undercounted.
+  function noteRate(host, mbps, ttfbMs) {
+    const s = stats[host] || (stats[host] = { r: null, t: null, n: 0, at: 0 });
+    if (mbps != null && isFinite(mbps)) {
+      s.r = s.r == null ? mbps : s.r * 0.75 + mbps * 0.25;
       s.n += 1;
     }
-    if (ttfbMs != null) s.ttfb = s.ttfb == null ? ttfbMs : s.ttfb * 0.8 + ttfbMs * 0.2;
+    if (ttfbMs != null && isFinite(ttfbMs)) s.t = s.t == null ? ttfbMs : s.t * 0.8 + ttfbMs * 0.2;
     s.at = Date.now();
     statsDirty = true;
   }
 
   function statRate(host) {
     const s = stats[host];
-    return s && s.d > 0 ? s.b * 8 / s.d / 1000 : null;
+    return s && s.r != null ? s.r : null;
   }
 
+  // A record fades back toward the neutral prior over a few hours, so a mirror
+  // that had one bad evening is tried again instead of being shut out forever.
   function hostScore(host) {
     const s = stats[host];
-    const fresh = s && s.n >= 3 && Date.now() - s.at < 3 * 86400e3;
-    return fresh ? statRate(host) : prior(host);
+    if (!s || s.r == null || s.n < 2) return prior(host);
+    const w = Math.exp(-(Date.now() - s.at) / (6 * 3600e3));
+    return w * s.r + (1 - w) * prior(host);
+  }
+
+  // Bytes over the union of [t0, t1] intervals (overlaps counted once), Mbps.
+  function unionRate(list) {
+    if (!list.length) return null;
+    const iv = list.map(x => [x.t0, x.t1]).sort((a, b) => a[0] - b[0]);
+    let busy = 0, s = iv[0][0], e = iv[0][1];
+    for (let i = 1; i < iv.length; i += 1) {
+      if (iv[i][0] > e) { busy += e - s; s = iv[i][0]; e = iv[i][1]; } else if (iv[i][1] > e) e = iv[i][1];
+    }
+    busy += e - s;
+    const bytes = list.reduce((a, x) => a + x.bytes, 0);
+    return busy > 0 ? bytes * 8 / busy / 1000 : null;
   }
 
   setInterval(function () {
@@ -505,6 +524,7 @@
 
     return new Promise(function (resolve) {
       let settled = false;
+      let firstHotAt = 0;
       onTick = tick;
       const iv = setInterval(tick, 40);
       function finish(win, why) {
@@ -516,8 +536,16 @@
       }
       function tick() {
         if (settled) return;
-        for (const x of natives) {
-          if (x.p.done && x.p.rate() >= need) return finish(x, 'hot');
+        // B站's own first choice wins whenever it is cached. Another edge is
+        // taken only once the primary has shown it is not (or lags by 400 ms):
+        // a backup edge can answer a small probe fast and still stall on the
+        // real segment, as Akamai did on a popular video in testing.
+        const hot = natives.filter(x => x.p.done && x.p.rate() >= need);
+        if (hot.length) {
+          const primary = natives[0];
+          if (hot.indexOf(primary) !== -1) return finish(primary, 'hot');
+          if (!firstHotAt) firstHotAt = now();
+          if (primary.p.finished || primary.p.done || now() - firstHotAt > 400) return finish(hot[0], 'hot');
         }
         const coldNow = natives.every(function (x) {
           if (x.p.finished && !x.p.ok) return true;
@@ -530,6 +558,8 @@
             const rate = x.p.rate();
             if (x.p.status < 400 && rate >= need && (!best || rate > best.rate)) best = { x, rate };
           }
+          const primary = natives[0];
+          if (best && primary && primary.p.status < 400 && primary.p.rate() >= need) best = { x: primary };
           finish(best ? best.x : null, best ? 'hot-late' : 'cold');
         }
       }
@@ -539,6 +569,7 @@
 
   function setRoute(fs, host, cls, why) {
     const prev = fs.route;
+    if (prev && prev.cls === 'mainland' && cls === 'native') fs.flips = (fs.flips || 0) + 1;
     fs.route = { host, cls, why, at: Date.now() };
     if (cls === 'mainland') {
       fs.recheckAt = now() + cfg.recheckMs;
@@ -567,7 +598,7 @@
           markFailed(fs, ml, 10 * 60e3, 'probe ' + (res.warm.status || 'network'));
           ml = mainlandList(fs)[0] || null;
         } else if (res.warm.tHead) {
-          recordStat(ml, 0, 0, res.warm.tHead - res.warm.t0);
+          noteRate(ml, null, res.warm.tHead - res.warm.t0);
         }
       }
       if (ml) {
@@ -593,7 +624,7 @@
     probe(fs, url, Math.max(0, fs.lastEnd + 1), 64 * KB, 6000).promise.then(function (p) {
       fs.switching = false;
       if (p.ok) {
-        if (p.tHead) recordStat(h, 0, 0, p.tHead - p.t0);
+        if (p.tHead) noteRate(h, null, p.tHead - p.t0);
         setRoute(fs, h, 'mainland', why);
       } else {
         markFailed(fs, h, 10 * 60e3, 'verify ' + (p.status || 'network'));
@@ -626,22 +657,43 @@
     });
   }
 
+  // Download rate while on the mainland route; null when nothing is in flight
+  // (buffer full), which counts as keeping up.
+  function mainlandRate(fs) {
+    if (fs.store) return storeRate(fs);
+    const r = fs.samples.slice(-4);
+    return r.length ? r.reduce((a, x) => a + x.bytes, 0) * 8 / r.reduce((a, x) => a + x.dur, 0) / 1000 : null;
+  }
+
+  // Going back to the native edge only pays off when the mainland route is
+  // falling behind, and only on evidence that more than the next few hundred KB
+  // is cached. A single hot probe used to pull the route back, the next
+  // lookahead found cold data and pushed it out again — every 30 s.
   function recheck(fs) {
     if (!fs.route || fs.route.cls !== 'mainland' || fs.looking || now() < fs.recheckAt || fs.lastEnd < 0) return;
     fs.recheckAt = now() + cfg.recheckMs;
+    if (fs.flips >= 2) return; // already bounced back and forth: stay put for this file
+    const rate = mainlandRate(fs);
+    if (rate == null || rate >= 1.5 * bwMbps(fs)) return;
     const h = nativeCandidates(fs)[0];
     const url = h && urlForHost(fs, h, toURL(fs.lastUrl));
     if (!url) return;
-    const at = fs.lastEnd + 1;
+    const near = fs.lastEnd + 1;
+    const far = near + Math.floor(aheadBytes(fs));
     // A region we probed earlier is warm because of that probe, not because
     // other viewers pulled it — it would read hot and lure us back to a cold edge.
-    if (wasProbed(fs, h, at, at + cfg.probeBytes - 1)) return;
+    if (wasProbed(fs, h, near, near + cfg.probeBytes - 1) || wasProbed(fs, h, far, far + cfg.lookBytes - 1)) return;
     fs.looking = true;
-    probe(fs, url, at, cfg.probeBytes, 3000).promise.then(function (p) {
+    const a = probe(fs, url, near, cfg.probeBytes, 3000);
+    const b = probe(fs, url, far, cfg.lookBytes, 3000);
+    Promise.all([a.promise, b.promise]).then(function () {
       fs.looking = false;
-      if (p.ok && p.rate() >= hotMin(fs) && fs.route && fs.route.cls === 'mainland') {
-        setRoute(fs, h, 'native', 'recheck-hot ' + p.rate().toFixed(0) + 'M');
-        fs.hotUntil = at + cfg.probeBytes - 1;
+      const need = hotMin(fs);
+      const nearHot = a.ok && a.rate() >= need;
+      const farHot = b.status === 416 || (b.ok && b.rate() >= need); // 416: past the end of the file
+      if (nearHot && farHot && fs.route && fs.route.cls === 'mainland') {
+        setRoute(fs, h, 'native', 'recheck-hot ' + a.rate().toFixed(0) + '/' + (b.ok ? b.rate().toFixed(0) : 'eof') + 'M');
+        fs.hotUntil = far + cfg.lookBytes - 1;
       }
     });
   }
@@ -688,11 +740,17 @@
 
     if (!r) {
       if (important(fs) && sizeable) return startRace(fs, reqU, range, 'start').then(() => fs.route && fs.route.host);
+      // Low-bitrate files (audio) are never raced, but should not keep going
+      // back to a host that has already failed them.
+      if (isFailed(fs, reqU.host)) return nativeCandidates(fs)[0] || mainlandList(fs)[0] || reqU.host;
       return reqU.host;
     }
     if (isFailed(fs, r.host)) {
-      const nat = nativeCandidates(fs)[0];
-      return nat || reqU.host;
+      // The routed host just failed for this file (typically the player's
+      // retry after a stuck request): race what is left on this very request,
+      // falling to mainland when the remaining edges are cold.
+      if (important(fs) && sizeable && range) return startRace(fs, reqU, range, 'failover').then(() => fs.route && fs.route.host);
+      return nativeCandidates(fs)[0] || mainlandList(fs)[0] || reqU.host;
     }
     if (seek) {
       if (r.cls === 'native' && important(fs) && sizeable) {
@@ -748,11 +806,15 @@
     const onRoute = fs.route && fs.route.host === host;
 
     if (m.timedOut || (status === 0 && loaded > 0)) {
-      recordStat(host, loaded, dur, m.tHead ? m.tHead - m.tSend : null);
+      noteRate(host, loaded * 8 / Math.max(dur, 1) / 1000, m.tHead ? m.tHead - m.tSend : null);
       log(fs, 'timeout', host, (loaded / MB).toFixed(1) + 'MB/' + (dur / 1000).toFixed(1) + 's');
-      // Judged on the host's decayed record (this timeout already dragged it
-      // down): one cross-border hiccup must not push a 60 Mbps mirror aside
-      // for one that cannot finish a 4K segment inside the player's 10 s.
+      // Not a single byte for the whole request: this host is not serving this
+      // file (seen with Akamai answering probes but hanging on segments), so
+      // it is left out for the file rather than tried again.
+      if (!loaded && !isFailed(fs, host)) markFailed(fs, host, 10 * 60e3, 'timeout 0B');
+      // Otherwise judged on the host's decayed record (this timeout already
+      // dragged it down): one cross-border hiccup must not push a 60 Mbps
+      // mirror aside for one that cannot finish a 4K segment inside 10 s.
       if (onRoute) reroute(fs, 'timeout');
       return;
     }
@@ -767,7 +829,8 @@
     const eff = loaded * 8 / dur / 1000;
     fs.samples.push({ host, bytes: loaded, dur });
     if (fs.samples.length > 12) fs.samples.shift();
-    recordStat(host, loaded, dur, m.tHead ? m.tHead - m.tSend : null);
+    // Small requests (audio, init) measure latency, not bandwidth.
+    noteRate(host, loaded >= 256 * KB ? eff : null, m.tHead ? m.tHead - m.tSend : null);
 
     if (!onRoute) return;
     const need = needMbps(fs);
@@ -814,12 +877,12 @@
     const want = [];
     [first].concat(mainlandList(fs)).forEach(function (h) {
       if (!h || want.indexOf(h) !== -1 || isFailed(fs, h) || want.length >= cfg.multiHosts) return;
-      if (want.length && hostScore(h) < 6) return; // a crawling mirror only adds stalls
+      if (want.length && hostScore(h) < 2) return; // only a mirror that barely moves is left out
       want.push(h);
     });
     want.forEach(function (h) {
       let x = st.hosts.find(o => o.h === h);
-      if (!x) st.hosts.push(x = { h, url: null, active: 0, strikes: 0, dead: false, bytes: 0 });
+      if (!x) st.hosts.push(x = { h, url: null, active: 0, strikes: 0, dead: false, bytes: 0, done: [] });
       if (x.dead && !isFailed(fs, h)) { x.dead = false; x.strikes = 0; }
       x.url = urlForHost(fs, h, reqU) || x.url;
     });
@@ -963,7 +1026,11 @@
       x.strikes = 0;
       b.runs.forEach(o => { o.aborted = true; o.ac.abort(); });
       if (buf) {
-        recordStat(x.h, off, now() - r.t0, r.head ? r.head - r.t0 : null);
+        // Host-level rate over this mirror's recent blocks, overlaps counted
+        // once: its two concurrent blocks share one connection.
+        x.done.push({ t0: r.t0, t1: now(), bytes: off });
+        x.done = x.done.filter(d => now() - d.t1 < 20000).slice(-12);
+        noteRate(x.h, unionRate(x.done), r.head ? r.head - r.t0 : null);
         st.hist.push({ t: now(), t0: r.t0, bytes: off });
       }
       fs.verified.add(x.h);
@@ -994,7 +1061,7 @@
           r.ac.abort();
           r.x.strikes += 1;
           if (r.x.strikes >= 3) { r.x.dead = true; markFailed(fs, r.x.h, 60e3, 'stalls'); }
-          recordStat(r.x.h, r.bytes, t - r.t0, null);
+          noteRate(r.x.h, r.bytes * 8 / Math.max(t - r.t0, 1) / 1000, null);
           if (b.need) log(fs, 'stall', r.x.h, { k: 'stallInfo', a: [(b.s / MB).toFixed(0)] });
         }
       });
@@ -1227,9 +1294,33 @@
     if (m && m.media) m.timedOut = true;
   }
 
+  function onProgress(e) {
+    const m = metaOf.get(this);
+    if (m && m.media && e && e.loaded > 0) m.loaded = e.loaded;
+  }
+
+  // A request that has not produced a single byte after a few seconds will not
+  // recover in time. End it with the XHR's own timeout so the player's retry —
+  // which the router now sends elsewhere — starts at 3.5 s instead of 10 s.
+  function armWatchdog(xhr, m) {
+    if (!m.fs || m.shim) return;
+    const onMainland = m.fs.route && m.fs.route.cls === 'mainland' && m.fs.route.host === m.host;
+    const limit = onMainland ? 5000 : 3500; // allow for cross-border first-byte latency
+    clearTimeout(m.wd);
+    m.wd = setTimeout(function () {
+      if (m.aborted || m.tEnd || m.loaded > 0 || metaOf.get(xhr) !== m) return;
+      if (!isFailed(m.fs, m.host)) markFailed(m.fs, m.host, 10 * 60e3, 'no bytes in ' + (limit / 1000) + 's');
+      // Only for requests that already carry a timeout: those come from the
+      // player's segment loader, which retries on timeout. Its preloader sets
+      // none and has no timeout handler, so its promise would never settle.
+      if (xhr.timeout > 0) { try { xhr.timeout = 1; } catch (_) {} }
+    }, limit);
+  }
+
   function onLoadEnd(e) {
     const m = metaOf.get(this);
     if (!m || !m.media || !m.sent) return;
+    clearTimeout(m.wd);
     m.tEnd = now();
     try { onSegmentDone(m, this.status, e && typeof e.loaded === 'number' ? e.loaded : 0); } catch (_) {}
   }
@@ -1277,8 +1368,11 @@
     m.host = target ? target.host : m.u.host;
     m.tSend = now();
     m.tHead = 0;
+    m.loaded = 0;
     m.sent = true;
-    return xSend.apply(xhr, args);
+    const ret = xSend.apply(xhr, args);
+    armWatchdog(xhr, m);
+    return ret;
   }
 
   XP.send = function () {
@@ -1287,6 +1381,7 @@
     if (!hooked.has(this)) {
       hooked.add(this);
       this.addEventListener('readystatechange', onReadyState);
+      this.addEventListener('progress', onProgress);
       this.addEventListener('timeout', onTimeout);
       this.addEventListener('loadend', onLoadEnd);
     }
@@ -1510,8 +1605,8 @@
     const ml = cfg.mainland.map(function (h) {
       const r = statRate(h);
       const s = stats[h];
-      return '<tr><td>' + shortHost(h) + '</td><td>' + (s && s.n >= 3 ? r.toFixed(1) + ' Mbps' : T.untested) +
-        '</td><td class="muted">' + (s && s.ttfb != null ? T.ttfb + ' ' + s.ttfb.toFixed(0) + ' ms' : '') + '</td></tr>';
+      return '<tr><td>' + shortHost(h) + '</td><td>' + (s && s.n >= 2 && r != null ? r.toFixed(1) + ' Mbps' : T.untested) +
+        '</td><td class="muted">' + (s && s.t != null ? T.ttfb + ' ' + s.t.toFixed(0) + ' ms' : '') + '</td></tr>';
     }).join('');
     const lg = logs.slice(-14).reverse()
       .map(l => esc(l.t + ' ' + (T.ev[l.ev] || l.ev) + ' ' + l.h + '  ' + l.f + '  ' + tr(l.info))).join('\n');
@@ -1557,7 +1652,7 @@
           verified: Array.from(f.verified).map(shortHost),
           rate: fsRate(f) && +fsRate(f).toFixed(1), MB: +(f.bytes / MB).toFixed(1), multi: f.multiUsed || null
         })),
-        mainland: cfg.mainland.map(h => ({ h: shortHost(h), rate: statRate(h) && +statRate(h).toFixed(1), n: stats[h] ? stats[h].n : 0, ttfb: stats[h] && stats[h].ttfb && Math.round(stats[h].ttfb) })),
+        mainland: cfg.mainland.map(h => ({ h: shortHost(h), rate: statRate(h) && +statRate(h).toFixed(1), score: +hostScore(h).toFixed(1), n: stats[h] ? stats[h].n : 0, ttfb: stats[h] && stats[h].t && Math.round(stats[h].t) })),
         log: logs.slice(-30)
       };
     }

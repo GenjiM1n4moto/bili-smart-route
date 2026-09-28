@@ -28,9 +28,9 @@ Typical accelerator scripts either probe only the **start** of a file (which is 
 
 ## How it works
 
-1. **Per-file decision, probing the end, not the start.** Before the first large segment of a file, it probes the **end** of that exact range on the native edges Bilibili assigned. Cached → stay on the native edge; popular videos are untouched.
-2. **Lookahead.** While on a native edge, it keeps probing about 15 s ahead of playback and switches before a cold region stalls the player.
-3. **Mainland fallback.** Candidates are Bilibili's official UPOS mirrors (they accept the same signed URLs), ranked by measured effective throughput including first-byte latency, and verified with a small request before switching.
+1. **Per-file decision, probing the end, not the start.** Before the first large segment of a file, it probes the **end** of that exact range on the native edges Bilibili assigned. Cached → stay on the native edge (preferring the one Bilibili listed first when several are cached); popular videos are untouched.
+2. **Lookahead.** While on a native edge, it keeps probing about 15 s ahead of playback and switches before a cold region stalls the player. If a request to an edge receives no data at all within a few seconds, that edge is marked as failed and the player retries elsewhere right away.
+3. **Mainland fallback.** Candidates are Bilibili's official UPOS mirrors (they accept the same signed URLs), ranked by measured effective throughput (including first-byte latency, decaying over time), and verified with a small request before switching.
 4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once, reading about 20 s ahead (up to 64 MB); the player's requests are answered from memory. A block that stops moving for 3 s is re-fetched from another mirror.
 5. **Safety net.** If the player errors, or parallel fetches fail 3 times within a minute, that page falls back to plain requests.
 
@@ -112,7 +112,7 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 ## Privacy
 
 - Collects and uploads nothing; talks only to Bilibili's own CDN hosts.
-- Mirror speed stats stay in your browser (`localStorage`, key `bax.stats.v1`).
+- Mirror speed stats stay in your browser (`localStorage`, key `bax.stats.v2`).
 - The diagnostic command `__BAX__.dump()` prints only host names and stats, never signed video URLs, so it is safe to paste into an issue.
 
 ## Limitations and known issues
