@@ -1,21 +1,35 @@
 // ==UserScript==
-// @name         B站智能选路 Bilibili Smart Route
-// @name:en      Bilibili Smart Route
-// @name:ja      Bilibili Smart Route
-// @namespace    bili-smart-route
-// @version      1.2.0
-// @description  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
-// @description:en  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
-// @description:ja  海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。
-// @author       bili-smart-route contributors
-// @license      MIT
-// @homepageURL  https://github.com/GenjiM1n4moto/bili-smart-route
-// @supportURL   https://github.com/GenjiM1n4moto/bili-smart-route/issues
-// @downloadURL  https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js
-// @updateURL    https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js
-// @match        https://*.bilibili.com/*
-// @run-at       document-start
-// @grant        none
+// @name               B站智能选路 Bilibili Smart Route
+// @name:zh-CN         B站智能选路 Bilibili Smart Route
+// @name:zh-TW         B站智能选路 Bilibili Smart Route
+// @name:zh-HK         B站智能选路 Bilibili Smart Route
+// @name:zh            B站智能选路 Bilibili Smart Route
+// @name:en            Bilibili Smart Route
+// @name:en-US         Bilibili Smart Route
+// @name:en-GB         Bilibili Smart Route
+// @name:ja            Bilibili Smart Route
+// @name:ja-JP         Bilibili Smart Route
+// @namespace          bili-smart-route
+// @version            1.2.1
+// @description        海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
+// @description:zh-CN  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
+// @description:zh-TW  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
+// @description:zh-HK  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
+// @description:zh     海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
+// @description:en     Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
+// @description:en-US  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
+// @description:en-GB  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
+// @description:ja     海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。
+// @description:ja-JP  海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。
+// @author             bili-smart-route contributors
+// @license            MIT
+// @homepageURL        https://github.com/GenjiM1n4moto/bili-smart-route
+// @supportURL         https://github.com/GenjiM1n4moto/bili-smart-route/issues
+// @downloadURL        https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js
+// @updateURL          https://github.com/GenjiM1n4moto/bili-smart-route/releases/latest/download/bili-smart-route.user.js
+// @match              https://*.bilibili.com/*
+// @run-at             document-start
+// @grant              none
 // ==/UserScript==
 
 (function () {
@@ -28,7 +42,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.2.1';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v2';
   const KB = 1024;
