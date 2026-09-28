@@ -931,30 +931,55 @@
     return st.hist.reduce((a, h) => a + h.bytes, 0) * 8 / span / 1000;
   }
 
+  // A mirror that has not delivered a single block of this file is given up on
+  // sooner than one that has been working and hit a bad patch.
+  const strikeLimit = x => (x.bytes > 0 ? 3 : 2);
+
+  // Milliseconds until a run is expected to finish its block.
+  function runEta(r) {
+    if (!r.head) return Infinity;
+    const dt = now() - r.head;
+    if (dt < 300) return 0; // just started streaming: too early to judge
+    return r.bytes > 0 ? (BLOCK - r.bytes) * dt / r.bytes : Infinity;
+  }
+
   function nextBlock(fs, x) {
     const st = storeOf(fs);
+    const usable = o => o.want && !o.dead && o.url;
+    // A mirror a block has already stalled on gets it again only when every
+    // other mirror has stalled on it too.
+    const avoid = b => b.bad && b.bad.has(x) && st.hosts.some(o => o !== x && usable(o) && !b.bad.has(o));
     const pending = Array.from(st.blocks.values()).filter(b => !b.done).sort((a, b) => a.idx - b.idx);
     for (const b of pending) {
-      if (b.need && !b.runs.length) return b;
+      if (b.need && !b.runs.length && !avoid(b)) return b;
     }
+    // A block the player is waiting on, running only on another mirror for over
+    // 1.5 s and not about to land, gets a second copy here before any read-ahead;
+    // the first copy to land wins.
+    const hedge = function (late) {
+      let best = null;
+      for (const b of pending) {
+        if (!b.need || !b.runs.length || avoid(b) || b.runs.some(r => r.x === x)) continue;
+        const age = now() - Math.min.apply(null, b.runs.map(r => r.t0));
+        if (age < 1500 || (late && Math.min.apply(null, b.runs.map(runEta)) < 1500)) continue;
+        if (!best || age > best.age) best = { b, age };
+      }
+      return best && best.b;
+    };
+    const late = hedge(true);
+    if (late) return late;
     // Read ahead, in order, up to raEnd.
     if (storeMem < storeCap() && st.raEnd >= 0) {
       const from = Math.floor(st.low / BLOCK);
       const to = Math.floor(Math.min(st.raEnd, st.eof - 1) / BLOCK);
       for (let i = from; i <= to; i += 1) {
         const b = blockAt(st, i);
-        if (!b.done && !b.runs.length) return b;
+        if (!b.done && !b.runs.length && !avoid(b)) return b;
       }
     }
-    // Endgame: a block the player is waiting on, running only on another
-    // mirror for over 1.5 s, gets a second copy here; the first to land wins.
-    let hedge = null;
-    for (const b of pending) {
-      if (!b.need || !b.runs.length || b.runs.some(r => r.x === x)) continue;
-      const age = now() - Math.min.apply(null, b.runs.map(r => r.t0));
-      if (age > 1500 && (!hedge || age > hedge.age)) hedge = { b, age };
-    }
-    return hedge && hedge.b;
+    // Endgame: nothing left to read ahead, so a spare slot may as well race
+    // any block the player is waiting on.
+    return hedge(false);
   }
 
   function schedule(fs) {
@@ -1043,8 +1068,9 @@
     }).catch(function (err) {
       release();
       if (!r.aborted && !b.done) {
+        (b.bad || (b.bad = new Set())).add(x);
         x.strikes += 1;
-        if (x.strikes >= 3) { x.dead = true; markFailed(fs, x.h, 60e3, 'block ' + (err && err.message)); }
+        if (x.strikes >= strikeLimit(x)) { x.dead = true; markFailed(fs, x.h, 60e3, 'block ' + (err && err.message)); }
       }
       schedule(fs);
     });
@@ -1062,6 +1088,7 @@
         if (!b.done && !r.aborted && t - r.last > limit) {
           r.aborted = true;
           r.ac.abort();
+          (b.bad || (b.bad = new Set())).add(r.x);
           const h = hit.get(r.x) || { bytes: 0, t0: r.t0 };
           h.bytes += r.bytes;
           h.t0 = Math.min(h.t0, r.t0);
@@ -1072,7 +1099,7 @@
     });
     hit.forEach(function (h, x) {
       x.strikes += 1;
-      if (x.strikes >= 3) { x.dead = true; markFailed(fs, x.h, 60e3, 'stalls'); }
+      if (x.strikes >= strikeLimit(x)) { x.dead = true; markFailed(fs, x.h, 60e3, 'stalls'); }
       noteRate(x.h, h.bytes * 8 / Math.max(t - h.t0, 1) / 1000, null);
     });
     Array.from(st.waiters).forEach(function (w) {
@@ -1308,22 +1335,40 @@
     if (m && m.media && e && e.loaded > 0) m.loaded = e.loaded;
   }
 
-  // A request that has not produced a single byte after a few seconds will not
-  // recover in time. End it with the XHR's own timeout so the player's retry —
-  // which the router now sends elsewhere — starts at 3.5 s instead of 10 s.
+  // A request that cannot finish before the player's own timeout is ended early
+  // with that timeout, so the player's retry — which the router now sends
+  // elsewhere — starts after 3–4 s instead of 10 s. Two cases: not a single byte
+  // yet (the host is not serving this file), or bytes trickling in too slowly
+  // for the rest of the range (a cold stretch the tail probe did not see).
   function armWatchdog(xhr, m) {
     if (!m.fs || m.shim) return;
     const onMainland = m.fs.route && m.fs.route.cls === 'mainland' && m.fs.route.host === m.host;
-    const limit = onMainland ? 5000 : 3500; // allow for cross-border first-byte latency
+    const quiet = onMainland ? 5000 : 3500; // allow for cross-border first-byte latency
+    const size = m.range ? m.range.end - m.range.start + 1 : 0;
     clearTimeout(m.wd);
-    m.wd = setTimeout(function () {
-      if (m.aborted || m.tEnd || m.loaded > 0 || metaOf.get(xhr) !== m) return;
-      if (!isFailed(m.fs, m.host)) markFailed(m.fs, m.host, 10 * 60e3, 'no bytes in ' + (limit / 1000) + 's');
+    const check = function () {
+      if (m.aborted || m.tEnd || metaOf.get(xhr) !== m) return;
+      const t = now();
+      const age = t - m.tSend;
+      const deadline = xhr.timeout > 0 ? xhr.timeout : 10000;
+      let why = null;
+      if (!(m.loaded > 0)) {
+        if (age >= quiet) why = 'no bytes in ' + (quiet / 1000) + 's';
+      } else if (size > m.loaded && m.tHead && t - m.tHead >= 1000) {
+        const rate = m.loaded / (t - m.tHead); // bytes per ms since the first byte
+        if (age + (size - m.loaded) / rate > deadline * 0.9) why = 'slow ' + (rate * 8 / 1000).toFixed(1) + 'M';
+      }
+      if (!why) {
+        if (age < deadline * 0.7) m.wd = setTimeout(check, 500);
+        return;
+      }
+      if (!isFailed(m.fs, m.host)) markFailed(m.fs, m.host, m.loaded > 0 ? 60e3 : 10 * 60e3, why);
       // Only for requests that already carry a timeout: those come from the
       // player's segment loader, which retries on timeout. Its preloader sets
       // none and has no timeout handler, so its promise would never settle.
       if (xhr.timeout > 0) { try { xhr.timeout = 1; } catch (_) {} }
-    }, limit);
+    };
+    m.wd = setTimeout(check, 3000);
   }
 
   function onLoadEnd(e) {
@@ -1331,7 +1376,9 @@
     if (!m || !m.media || !m.sent) return;
     clearTimeout(m.wd);
     m.tEnd = now();
-    try { onSegmentDone(m, this.status, e && typeof e.loaded === 'number' ? e.loaded : 0); } catch (_) {}
+    // A timeout's loadend reports 0 bytes whatever arrived; progress saw them.
+    const loaded = Math.max(e && typeof e.loaded === 'number' ? e.loaded : 0, m.loaded || 0);
+    try { onSegmentDone(m, this.status, loaded); } catch (_) {}
   }
 
   function onPlayurlLoad() {
