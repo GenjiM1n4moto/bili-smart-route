@@ -1053,18 +1053,27 @@
   function watchStore(fs) {
     const st = storeOf(fs);
     const t = now();
+    // Runs on one mirror that stall together share one cause (usually its
+    // connection), so they count as one strike and one rate sample.
+    const hit = new Map();
     st.blocks.forEach(function (b) {
       b.runs.forEach(function (r) {
         const limit = r.head ? cfg.stallMs : cfg.stallMs + 1000; // allow for 1–2 s cross-border TTFB
         if (!b.done && !r.aborted && t - r.last > limit) {
           r.aborted = true;
           r.ac.abort();
-          r.x.strikes += 1;
-          if (r.x.strikes >= 3) { r.x.dead = true; markFailed(fs, r.x.h, 60e3, 'stalls'); }
-          noteRate(r.x.h, r.bytes * 8 / Math.max(t - r.t0, 1) / 1000, null);
+          const h = hit.get(r.x) || { bytes: 0, t0: r.t0 };
+          h.bytes += r.bytes;
+          h.t0 = Math.min(h.t0, r.t0);
+          hit.set(r.x, h);
           if (b.need) log(fs, 'stall', r.x.h, { k: 'stallInfo', a: [(b.s / MB).toFixed(0)] });
         }
       });
+    });
+    hit.forEach(function (h, x) {
+      x.strikes += 1;
+      if (x.strikes >= 3) { x.dead = true; markFailed(fs, x.h, 60e3, 'stalls'); }
+      noteRate(x.h, h.bytes * 8 / Math.max(t - h.t0, 1) / 1000, null);
     });
     Array.from(st.waiters).forEach(function (w) {
       if (t - w.t0 > w.deadline) failWaiter(fs, w, 'deadline');
