@@ -29,7 +29,7 @@ Typical accelerator scripts either probe only the **start** of a file (which is 
 ## How it works
 
 1. **Per-file decision, probing the end, not the start.** Before the first large segment of a file, it probes the **end** of that exact range on the native edges Bilibili assigned. Cached → stay on the native edge (preferring the one Bilibili listed first when several are cached); popular videos are untouched.
-2. **Lookahead.** While on a native edge, it keeps probing about 15 s ahead of playback and switches before a cold region stalls the player. If a request to an edge receives no data at all within a few seconds, that edge is marked as failed and the player retries elsewhere right away.
+2. **Lookahead.** While on a native edge, it keeps probing about 15 s ahead of playback and switches before a cold region stalls the player. If a request to an edge receives no data within a few seconds, or is on course to miss the player's timeout at its current speed, it is ended early and the player retries elsewhere right away.
 3. **Mainland fallback.** Candidates are Bilibili's official UPOS mirrors (they accept the same signed URLs), ranked by measured effective throughput (including first-byte latency, decaying over time), and verified with a small request before switching.
 4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once, reading about 20 s ahead (up to 64 MB); the player's requests are answered from memory. A block that stops moving for 3 s is re-fetched from another mirror.
 5. **Safety net.** If the player errors, or parallel fetches fail 3 times within a minute, that page falls back to plain requests.
@@ -51,6 +51,7 @@ In the Japanese environment above (mainland mirrors were at about 10–30 Mbps p
 |---|---|---|
 | Obscure 4K AV1 (7.7 Mbps) | Native edge at 0–6 Mbps, stalls from the start | Switched to mainland, ~40 Mbps, 50 s+ buffered ahead |
 | Obscure 4K AVC (29.7 Mbps) | A single mainland mirror barely keeps up; buffer drops from 19 s to 3 s | Parallel mirrors: **0 stalls, 0 of 1822 frames dropped, 30 s+ buffered ahead** |
+| Obscure 4K AVC (30 Mbps), starting mid-video | Did not start within 45 s | Continuous playback within ~10 s, then 0 stalls with 30 s+ buffered ahead |
 | Popular video | — | Native edge has it cached; direct, same as without the script |
 
 ## Install
