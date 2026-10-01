@@ -52,7 +52,7 @@ In the Japanese environment above (mainland mirrors were at about 10–30 Mbps p
 | Obscure 4K AV1 (7.7 Mbps) | Native edge at 0–6 Mbps, stalls from the start | Switched to mainland, ~40 Mbps, 50 s+ buffered ahead |
 | Obscure 4K AVC (29.7 Mbps) | A single mainland mirror barely keeps up; buffer drops from 19 s to 3 s | Parallel mirrors: **0 stalls, 0 of 1822 frames dropped, 30 s+ buffered ahead** |
 | Obscure 4K AVC (30 Mbps), starting mid-video | Did not start within 45 s | Continuous playback within ~10 s, then 0 stalls with 30 s+ buffered ahead |
-| Popular video | — | Native edge has it cached; direct, same as without the script |
+| Popular video | Usually smooth, but slow when the edge is busy (one test took 38 s to start) | Direct on the native edge while it is cached, mainland for slow stretches (same test: started in 2 s, 0 stalls) |
 
 ## Install
 
