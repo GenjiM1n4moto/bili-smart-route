@@ -10,7 +10,7 @@
 // @name:ja            Bilibili Smart Route
 // @name:ja-JP         Bilibili Smart Route
 // @namespace          bili-smart-route
-// @version            1.2.1
+// @version            1.3.0
 // @description        海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-CN  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-TW  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
@@ -42,7 +42,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.2.1';
+  const VERSION = '1.3.0';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v2';
   const KB = 1024;
@@ -79,6 +79,7 @@
     readAheadSec: 20,      // how far past the player's request the store keeps fetching
     readAheadMaxMB: 64,
     storeCapMB: 192,       // memory for fetched blocks, per tab
+    keepBehindMB: 16,      // played blocks kept behind the player's fetch position
     stallMs: 3000,         // a block with no bytes for this long is re-fetched elsewhere
     mainland: MAINLAND
   };
@@ -113,7 +114,8 @@
       log: '切换记录', none: '暂无',
       autoOff: '本页已自动停用多镜像：',
       pause: '暂停脚本（刷新）', resume: '启用脚本（刷新）',
-      multi: '多镜像并行：', on: '开', off: '关', reset: '清空镜像统计',
+      multi: '多镜像并行：', on: '开', off: '关', reset: '清空镜像统计', exportLog: '导出日志',
+      qoe: (n, sec, ff) => '本视频：卡顿 ' + n + ' 次' + (n ? '，共 ' + sec + ' 秒' : '') + (ff != null ? '，首帧 ' + ff + ' 秒' : ''),
       ev: { native: '原生', mainland: '大陆', fail: '失败', timeout: '超时', stall: '卡住', storeFail: '并行失败', guard: '保护' },
       stallInfo: mb => '块 @' + mb + 'MB 换源',
       whyFails: () => '一分钟内 3 次并行下载失败',
@@ -128,7 +130,8 @@
       log: 'Switch log', none: 'Nothing yet',
       autoOff: 'Parallel mirrors turned off on this page: ',
       pause: 'Pause script (reload)', resume: 'Enable script (reload)',
-      multi: 'Parallel mirrors: ', on: 'on', off: 'off', reset: 'Reset mirror stats',
+      multi: 'Parallel mirrors: ', on: 'on', off: 'off', reset: 'Reset mirror stats', exportLog: 'Export log',
+      qoe: (n, sec, ff) => 'This video: ' + n + (n === 1 ? ' stall' : ' stalls') + (n ? ' (' + sec + ' s)' : '') + (ff != null ? ', first frame ' + ff + ' s' : ''),
       ev: { native: 'native', mainland: 'mainland', fail: 'failed', timeout: 'timeout', stall: 'stalled', storeFail: 'parallel failed', guard: 'guard' },
       stallInfo: mb => 'block @' + mb + 'MB re-fetched elsewhere',
       whyFails: () => '3 parallel fetch failures within a minute',
@@ -143,7 +146,8 @@
       log: '切り替え履歴', none: 'まだありません',
       autoOff: 'このページでは複数ミラーを自動停止しました：',
       pause: 'スクリプトを一時停止（再読み込み）', resume: 'スクリプトを有効化（再読み込み）',
-      multi: '複数ミラー並列：', on: 'オン', off: 'オフ', reset: 'ミラー統計をリセット',
+      multi: '複数ミラー並列：', on: 'オン', off: 'オフ', reset: 'ミラー統計をリセット', exportLog: 'ログを書き出す',
+      qoe: (n, sec, ff) => 'この動画：停止 ' + n + ' 回' + (n ? '（計 ' + sec + ' 秒）' : '') + (ff != null ? '、最初のフレーム ' + ff + ' 秒' : ''),
       ev: { native: 'ネイティブ', mainland: '本土', fail: '失敗', timeout: 'タイムアウト', stall: '停滞', storeFail: '並列失敗', guard: '保護' },
       stallInfo: mb => 'ブロック @' + mb + 'MB を別ミラーで再取得',
       whyFails: () => '1 分以内に並列取得が 3 回失敗',
@@ -178,15 +182,18 @@
   // ---- log ------------------------------------------------------------------
 
   const logs = [];
+  let sess = null; // the video being watched, recorded to local history (see below)
   function log(fs, ev, host, info) {
-    logs.push({
+    const l = {
       t: new Date().toLocaleTimeString('en-GB'),
       f: fs ? fs.label || fs.path.split('/').pop() : '',
       ev,
       h: host ? shortHost(host) : '',
       info: info || ''
-    });
+    };
+    logs.push(l);
     if (logs.length > 120) logs.shift();
+    sessEvent(l);
   }
 
   function shortHost(h) {
@@ -457,6 +464,58 @@
     return fs.probed.some(p => p[0] === host && p[1] <= e && s <= p[2]);
   }
 
+  // Resource Timing says when the network delivered a response, which a busy
+  // main thread cannot distort; the bytes read here can trail it by a long
+  // task. In testing, a 150 ms task made a 240 Mbps edge read as 14 Mbps, and
+  // headers landing during one made the body arrive all at once and read as
+  // ~1000 Mbps. B站's CDN sends no Timing-Allow-Origin, so only the start and
+  // end are known, and that span includes the time to first byte. Entries are
+  // also collected by an observer, which still gets them once the page's
+  // timing buffer is full.
+  const rtSeen = [];
+  const rtClaimed = new WeakSet();
+  try {
+    new PerformanceObserver(function (list) {
+      list.getEntries().forEach(function (e) {
+        if (e.initiatorType !== 'fetch' || e.name.indexOf('.m4s') === -1) return;
+        rtSeen.push(e);
+        if (rtSeen.length > 160) rtSeen.shift();
+      });
+    }).observe({ type: 'resource' });
+  } catch (_) {}
+
+  function netSpan(r) {
+    let list = rtSeen.filter(e => e.name === r.url);
+    try { list = list.concat(performance.getEntriesByName(r.url, 'resource')); } catch (_) {}
+    let best = null;
+    for (const e of list) {
+      if (rtClaimed.has(e) || e.initiatorType !== 'fetch' || e.startTime < r.t0 - 2 || !(e.responseEnd > e.startTime)) continue;
+      if (!best || Math.abs(e.startTime - r.t0) < Math.abs(best.startTime - r.t0)) best = e;
+    }
+    if (!best) return 0;
+    rtClaimed.add(best);
+    return best.responseEnd - best.startTime;
+  }
+
+  // A task that background tabs do not throttle (unlike setTimeout), for the
+  // moment it takes the timing entry or the observer callback to come in.
+  const nextTask = (function () {
+    try {
+      const ch = new MessageChannel();
+      const queue = [];
+      ch.port1.onmessage = function () { const f = queue.shift(); if (f) f(); };
+      return () => new Promise(function (resolve) { queue.push(resolve); ch.port2.postMessage(0); });
+    } catch (_) {
+      return () => Promise.resolve();
+    }
+  })();
+
+  function settleNet(r, tries) {
+    r.net = netSpan(r);
+    if (r.net || tries >= 2) return null;
+    return nextTask().then(() => settleNet(r, tries + 1));
+  }
+
   // onTick runs on every chunk and at the end. Decisions ride on network
   // callbacks because Chrome throttles timers in background tabs (to once a
   // minute for a silent tab), and a race waiting on setInterval would hold the
@@ -465,7 +524,7 @@
     const ac = typeof AbortController === 'function' ? new AbortController() : null;
     const host = toURL(url).host;
     const tick = typeof onTick === 'function' ? onTick : function () {};
-    const r = { url, host, status: 0, bytes: 0, t0: now(), tHead: 0, tLast: 0, done: false, finished: false, ok: false };
+    const r = { url, host, status: 0, bytes: 0, t0: now(), tHead: 0, tLast: 0, net: 0, done: false, finished: false, ok: false };
     if (fs) {
       fs.probed.push([host, start, start + len - 1]);
       if (fs.probed.length > 80) fs.probed.shift();
@@ -474,6 +533,9 @@
     r.abort = function () { try { ac && ac.abort(); } catch (_) {} };
     r.rate = function () {
       if (!r.tHead || !r.bytes) return 0;
+      // We saw the last byte well after the network delivered it: the main
+      // thread was busy, so go by the network's clock instead of ours.
+      if (r.net && r.tLast - r.t0 - r.net > 25) return r.bytes * 8 / r.net / 1000;
       const end = r.finished || r.done ? r.tLast : now();
       return r.bytes * 8 / Math.max(end - r.tHead, 4) / 1000;
     };
@@ -491,8 +553,11 @@
       function pump() {
         return reader.read().then(function (c) {
           if (c.value) { r.bytes += c.value.length; r.tLast = now(); }
-          if (c.done || r.bytes >= len) {
-            r.done = true;
+          if (r.bytes >= len) r.done = true;
+          if (c.done) return;
+          // A 206 of the asked-for length ends on its own, and only a response
+          // read to its end gets a timing entry; a full 200 is cut off here.
+          if (r.done && (res.status !== 206 || r.bytes >= len + 64 * KB)) {
             try { reader.cancel(); } catch (_) {}
             return;
           }
@@ -502,6 +567,9 @@
       }
       return pump();
     }).catch(function () {}).then(function () {
+      if (r.bytes) return settleNet(r, 0);
+      return null;
+    }).then(function () {
       clearTimeout(timer);
       r.finished = true;
       if (!r.tLast) r.tLast = now();
@@ -513,32 +581,89 @@
     return r;
   }
 
-  // Race the native edges on the END of the range the player is about to fetch
-  // (4K segments are 10–18 MB; an edge often holds a segment's head but not its
-  // tail, so a head probe reads 500+ Mbps and the segment still crawls). A
-  // cached edge answers in ~100–300 ms at 50+ Mbps and wins immediately; a cold
-  // one trickles at 0.7–6 Mbps while it pulls from mainland origin. Mainland
-  // probes are not raced on rate — TCP slow start over a 150–900 ms RTT makes
-  // their first bytes look slow even though they sustain 30–80 Mbps — so the
-  // mainland probe only proves the swapped signature works and warms the socket.
-  function race(fs, reqU, range) {
+  // Several probes of one edge, judged as one: it counts as cached only when
+  // every point is.
+  function probeSet(fs, url, starts, len, timeoutMs, onTick) {
+    const ps = starts.map(s => probe(fs, url, s, len, timeoutMs, onTick));
+    return {
+      ps,
+      get done() { return ps.every(p => p.done); },
+      get finished() { return ps.every(p => p.finished); },
+      get ok() { return ps.every(p => p.ok); },
+      get status() {
+        const bad = ps.find(p => p.status >= 400);
+        return bad ? bad.status : Math.max.apply(null, ps.map(p => p.status));
+      },
+      rate() { return Math.min.apply(null, ps.map(p => p.rate())); }, // a point with nothing yet reads 0
+      abort() { ps.forEach(p => p.abort()); }
+    };
+  }
+
+  // Where to probe the range the player is about to fetch. Its tail: an edge
+  // often holds a segment's head but not its tail, so a head probe reads 500+
+  // Mbps and the segment still crawls. And for a multi-MB segment, two points
+  // inside it as well: in testing an edge read 157 Mbps at the tail, then the
+  // segment crawled for 10 s through a cold middle.
+  function probePoints(range) {
+    if (!range) return { starts: [0], len: cfg.probeBytes };
+    const size = range.end - range.start + 1;
+    if (size < 3 * MB) {
+      const len = Math.min(cfg.probeBytes, size);
+      return { starts: [range.end - len + 1], len };
+    }
+    const len = Math.max(128 * KB, Math.floor(cfg.probeBytes * 0.4));
+    const at = f => range.start + Math.floor(size * f);
+    return { starts: [at(0.3), at(0.65), range.end - len + 1], len };
+  }
+
+  // An edge is cold as soon as any point shows it: a probe that failed, one
+  // that finished under the bar, or — while the page is not janking, since a
+  // blocked main thread stalls our reads — one that has streamed for 400 ms at
+  // under a third of it.
+  function setCold(set, need, steady) {
+    return set.ps.some(p => (p.finished && (!p.ok || p.rate() < need)) ||
+      (steady && p.tHead && !p.done && now() - p.tHead > 400 && p.rate() < need / 3));
+  }
+
+  // Race the native edges on the range the player is about to fetch (see
+  // probePoints). A cached edge answers in ~100–300 ms at 50+ Mbps and wins
+  // immediately; a cold one trickles at 0.7–6 Mbps while it pulls from mainland
+  // origin. opts.only probes just that edge; opts.exclude leaves one out.
+  function race(fs, reqU, range, opts) {
+    opts = opts || {};
     const need = hotMin(fs);
     const start = range ? range.start : 0;
-    const tail = range ? Math.max(start, range.end - cfg.probeBytes + 1) : 0;
+    const pts = probePoints(range);
     let onTick = function () {};
     const ping = () => onTick();
-    const natives = nativeCandidates(fs).map(function (h) {
+    const hosts = opts.only ? [opts.only] : nativeCandidates(fs).filter(h => h !== opts.exclude);
+    const natives = hosts.map(function (h) {
       const url = urlForHost(fs, h, reqU);
-      return url ? { h, p: probe(fs, url, tail, cfg.probeBytes, cfg.raceTimeoutMs + 800, ping) } : null;
+      return url ? { h, p: probeSet(fs, url, pts.starts, pts.len, cfg.raceTimeoutMs + 800, ping) } : null;
     }).filter(Boolean);
-    const ml = mainlandList(fs)[0] || null;
-    const mlUrl = ml && urlForHost(fs, ml, reqU);
-    const warm = mlUrl ? probe(fs, mlUrl, start, 64 * KB, 8000, ping) : null;
+    // Warm the mirrors the block store would use: the TLS handshake across the
+    // border costs several round trips, and a mirror that rejects this file's
+    // signature turns up here rather than on a block the player is waiting
+    // for. Not raced on rate — TCP slow start over a 150–900 ms RTT makes their
+    // first bytes look slow even though they sustain 30–80 Mbps.
+    if (!opts.only) {
+      mainlandList(fs).slice(0, cfg.multi ? cfg.multiHosts : 1).forEach(function (h) {
+        const url = urlForHost(fs, h, reqU);
+        if (!url || fs.verified.has(h)) return;
+        const p = probe(fs, url, start, 64 * KB, 8000);
+        p.promise.then(function () {
+          if (!p.ok) markFailed(fs, h, 10 * 60e3, 'probe ' + (p.status || 'network'));
+          else if (p.tHead) noteRate(h, null, p.tHead - p.t0);
+        });
+      });
+    }
     const t0 = now();
 
     return new Promise(function (resolve) {
       let settled = false;
       let firstHotAt = 0;
+      let lastTick = now();
+      let jankAt = -Infinity;
       onTick = tick;
       const iv = setInterval(tick, 40);
       function finish(win, why) {
@@ -546,27 +671,26 @@
         settled = true;
         clearInterval(iv);
         natives.forEach(x => { if (x !== win) x.p.abort(); });
-        resolve({ win, why, natives, ml, warm });
+        resolve({ win, why, natives });
       }
       function tick() {
         if (settled) return;
+        const t = now();
+        if (t - lastTick > 150) jankAt = t; // nothing ran for a while: the main thread was blocked
+        lastTick = t;
         // B站's own first choice wins whenever it is cached. Another edge is
         // taken only once the primary has shown it is not (or lags by 400 ms):
         // a backup edge can answer a small probe fast and still stall on the
         // real segment, as Akamai did on a popular video in testing.
-        const hot = natives.filter(x => x.p.done && x.p.rate() >= need);
+        const hot = natives.filter(x => x.p.finished && x.p.ok && x.p.rate() >= need);
         if (hot.length) {
           const primary = natives[0];
           if (hot.indexOf(primary) !== -1) return finish(primary, 'hot');
-          if (!firstHotAt) firstHotAt = now();
-          if (primary.p.finished || primary.p.done || now() - firstHotAt > 400) return finish(hot[0], 'hot');
+          if (!firstHotAt) firstHotAt = t;
+          if (primary.p.finished || t - firstHotAt > 400) return finish(hot[0], 'hot');
         }
-        const coldNow = natives.every(function (x) {
-          if (x.p.finished && !x.p.ok) return true;
-          if (x.p.done) return x.p.rate() < need;
-          return x.p.tHead && now() - x.p.tHead > 400 && x.p.rate() < need / 3;
-        });
-        if (coldNow || now() - t0 > cfg.raceTimeoutMs) {
+        const steady = t - jankAt > 300;
+        if (natives.every(x => setCold(x.p, need, steady)) || t - t0 > cfg.raceTimeoutMs) {
           let best = null;
           for (const x of natives) {
             const rate = x.p.rate();
@@ -595,9 +719,22 @@
     if (!prev || prev.host !== host) log(fs, cls, host, why);
   }
 
-  function startRace(fs, reqU, range, reason) {
-    fs.pending = race(fs, reqU, range).then(function (res) {
-      res.natives.forEach(x => {
+  // checkFirst: probe just that edge (the current route) and keep it when it
+  // is cached; the full race runs, without it, only when it is not. Racing
+  // every edge on every segment made the route flap between them.
+  function startRace(fs, reqU, range, reason, checkFirst) {
+    const first = checkFirst ? race(fs, reqU, range, { only: checkFirst }) : Promise.resolve(null);
+    fs.pending = first.then(function (pre) {
+      if (pre && pre.win) return { kept: true };
+      return race(fs, reqU, range, { exclude: checkFirst }).then(res => ({ res, pre }));
+    }).then(function (o) {
+      if (o.kept) {
+        fs.hotUntil = Math.max(fs.hotUntil, range ? range.end : cfg.probeBytes - 1);
+        return;
+      }
+      const res = o.res;
+      const all = (o.pre ? o.pre.natives : []).concat(res.natives);
+      all.forEach(x => {
         if (x.p.finished && x.p.status >= 400) markFailed(fs, x.h, 10 * 60e3, 'probe HTTP ' + x.p.status);
       });
       if (res.win) {
@@ -605,20 +742,12 @@
         fs.hotUntil = Math.max(fs.hotUntil, range ? range.end : cfg.probeBytes - 1);
         return;
       }
-      const rates = res.natives.map(x => shortHost(x.h) + ' ' + x.p.rate().toFixed(1) + 'M').join(', ');
-      let ml = res.ml;
-      if (ml && res.warm) {
-        if (res.warm.finished && !res.warm.ok) {
-          markFailed(fs, ml, 10 * 60e3, 'probe ' + (res.warm.status || 'network'));
-          ml = mainlandList(fs)[0] || null;
-        } else if (res.warm.tHead) {
-          noteRate(ml, null, res.warm.tHead - res.warm.t0);
-        }
-      }
+      const rates = all.map(x => shortHost(x.h) + ' ' + x.p.rate().toFixed(1) + 'M').join(', ');
+      const ml = mainlandList(fs)[0] || null;
       if (ml) {
         setRoute(fs, ml, 'mainland', reason + ':cold (' + rates + ')');
-      } else if (res.natives.length) {
-        setRoute(fs, res.natives[0].h, 'native', 'no-mainland');
+      } else if (all.length) {
+        setRoute(fs, all[0].h, 'native', 'no-mainland');
       }
     }).catch(function () {}).then(function () { fs.pending = null; });
     return fs.pending;
@@ -773,10 +902,10 @@
       if (r.cls === 'mainland') fs.recheckAt = 0;
     }
     // On a native edge, a segment reaching past what probes have shown to be
-    // cached gets its own tail checked first — otherwise one cold 18 MB segment
-    // sits there until the player's 10 s timeout.
+    // cached is checked on that edge first — otherwise one cold 18 MB segment
+    // sits there until the watchdog gives up on it.
     if (r.cls === 'native' && important(fs) && sizeable && range && range.end > fs.hotUntil) {
-      return startRace(fs, reqU, range, 'extend').then(() => fs.route && fs.route.host);
+      return startRace(fs, reqU, range, 'extend', r.host).then(() => fs.route && fs.route.host);
     }
     return r.host;
   }
@@ -790,6 +919,7 @@
     fs.lastUsed = Date.now();
     if (fs.kind === 'video') current.video = fs;
     else current.audio = fs;
+    sessFile(fs);
 
     function toTarget(host) {
       let url = null;
@@ -819,6 +949,7 @@
     const dur = m.tEnd - m.tSend;
     const onRoute = fs.route && fs.route.host === host;
 
+    sessBytes(host, loaded);
     if (m.timedOut || (status === 0 && loaded > 0)) {
       noteRate(host, loaded * 8 / Math.max(dur, 1) / 1000, m.tHead ? m.tHead - m.tSend : null);
       log(fs, 'timeout', host, (loaded / MB).toFixed(1) + 'MB/' + (dur / 1000).toFixed(1) + 's');
@@ -918,14 +1049,21 @@
   }
 
   function evict() {
-    if (storeMem <= storeCap()) return;
     const all = Array.from(new Set(files.values())).filter(f => f.store);
+    const keep = Math.max(4, +cfg.keepBehindMB || 16) * MB;
     all.forEach(function (f) {
-      if (Date.now() - f.lastUsed > 60e3) {
-        f.store.blocks.forEach(b => { if (!b.runs.length) dropBlock(f.store, b); });
-        f.store.raEnd = -1;
+      const st = f.store;
+      if (f !== current.video && Date.now() - f.lastUsed > 60e3) {
+        // The player has moved off this file (another quality, the last video).
+        st.blocks.forEach(b => { if (!b.runs.length && !b.need) dropBlock(st, b); });
+        st.raEnd = -1;
+        return;
       }
+      // Played data already sits in the player's own buffer; a little is kept
+      // behind its fetch position for duplicate fetches and short seeks back.
+      st.blocks.forEach(b => { if (b.done && !b.need && b.s + BLOCK < st.low - keep) dropBlock(st, b); });
     });
+    if (storeMem <= storeCap()) return;
     all.forEach(function (f) {
       const st = f.store;
       Array.from(st.blocks.values())
@@ -957,7 +1095,8 @@
     return r.bytes > 0 ? (BLOCK - r.bytes) * dt / r.bytes : Infinity;
   }
 
-  function nextBlock(fs, x) {
+  // urgentOnly: only a block the player is waiting on (for an extra slot).
+  function nextBlock(fs, x, urgentOnly) {
     const st = storeOf(fs);
     const usable = o => o.want && !o.dead && o.url;
     // A mirror a block has already stalled on gets it again only when every
@@ -981,7 +1120,7 @@
       return best && best.b;
     };
     const late = hedge(true);
-    if (late) return late;
+    if (late || urgentOnly) return late;
     // Read ahead, in order, up to raEnd.
     if (storeMem < storeCap() && st.raEnd >= 0) {
       const from = Math.floor(st.low / BLOCK);
@@ -998,13 +1137,24 @@
 
   function schedule(fs) {
     const st = storeOf(fs);
+    const usable = x => x.want && !x.dead && x.url;
     st.hosts.forEach(function (x) {
-      while (x.want && !x.dead && x.url && x.active < cfg.perHost) {
+      while (usable(x) && x.active < cfg.perHost) {
         const b = nextBlock(fs, x);
         if (!b) break;
         runBlock(fs, x, b);
       }
     });
+    // With every regular slot taken, a block the player is waiting on gets one
+    // extra connection on the best mirror that has already delivered for this
+    // file — otherwise it queues behind read-ahead, or sits on a stalled
+    // mirror until the stall watchdog fires (that cost 8 s at startup in testing).
+    st.hosts.filter(x => usable(x) && x.active === cfg.perHost && (x.bytes > 0 || fs.verified.has(x.h)))
+      .sort((a, b) => hostScore(b.h) - hostScore(a.h))
+      .forEach(function (x) {
+        const b = nextBlock(fs, x, true);
+        if (b) runBlock(fs, x, b);
+      });
     const busy = st.waiters.size > 0 || st.hosts.some(x => x.active > 0);
     if (busy && !st.iv) st.iv = setInterval(() => watchStore(fs), 250);
     if (!busy && st.iv) { clearInterval(st.iv); st.iv = 0; }
@@ -1063,6 +1213,7 @@
       storeMem += b.data.length;
       x.bytes += b.data.length;
       x.strikes = 0;
+      sessBytes(x.h, b.data.length);
       b.runs.forEach(o => { o.aborted = true; o.ac.abort(); });
       if (buf) {
         // Host-level rate over this mirror's recent blocks, overlaps counted
@@ -1552,6 +1703,173 @@
     }
   } catch (_) {}
 
+  // ---- local history --------------------------------------------------------
+  //
+  // One record per video watched, kept only in this browser (localStorage) so
+  // a stall can still be looked into after the tab is gone: __BAX__.history(),
+  // or the panel's export button. A record holds the video id (BV / ep), the
+  // quality, how playback went (first frame, stalls) as the <video> element
+  // saw it, bytes per host and the switch log. Nothing is sent anywhere.
+
+  const HIST_KEY = 'bax.hist.v1';
+  const HIST_MAX = 256 * 1024; // characters of JSON kept; the oldest records go first
+
+  function pageId() {
+    const m = /\/(BV[0-9A-Za-z]{10}|ep\d+|ss\d+)/.exec(location.pathname);
+    if (!m) return null;
+    const p = /[?&]p=(\d+)/.exec(location.search);
+    return m[1] + (p && p[1] !== '1' ? ' p' + p[1] : '');
+  }
+
+  function session() {
+    const id = pageId();
+    if (sess && sess.rec.id === id) return sess;
+    if (sess) closeSession();
+    if (!id) return null;
+    sess = {
+      t0: now(), dirty: true, stallAt: 0, lastCT: -1, bytes: {},
+      rec: {
+        id, at: Date.now(), v: VERSION, q: '', bw: null, natives: '', route: '',
+        firstFrameMs: null, playedS: 0, stalls: 0, stallMs: 0, maxStallMs: 0, seeks: 0, MB: {}, ev: []
+      }
+    };
+    return sess;
+  }
+
+  function sessFile(fs) {
+    const s = session();
+    if (!s || fs.kind !== 'video') return;
+    try { document.querySelectorAll('video').forEach(watchVideo); } catch (_) {}
+    if (fs.label && s.rec.q !== fs.label) { s.rec.q = fs.label; s.dirty = true; }
+    if (fs.bw) s.rec.bw = +(fs.bw / 1e6).toFixed(1);
+    s.rec.natives = fs.order.map(shortHost).join(',');
+  }
+
+  function sessBytes(h, n) {
+    if (!sess || !(n > 0)) return;
+    const k = shortHost(h);
+    sess.bytes[k] = (sess.bytes[k] || 0) + n;
+    sess.dirty = true;
+  }
+
+  // The first few events (how the file started) and the latest ones.
+  function sessEvent(l) {
+    const s = sess && sess.rec.id === pageId() ? sess : null;
+    if (!s) return;
+    s.rec.ev.push([l.t, l.ev, l.h, l.f, l.info]);
+    if (s.rec.ev.length > 14) s.rec.ev.splice(4, 1);
+    s.dirty = true;
+  }
+
+  function endStall() {
+    const s = sess;
+    if (!s || !s.stallAt) return;
+    const d = Math.round(now() - s.stallAt);
+    s.stallAt = 0;
+    if (d < 300) return;
+    s.rec.stalls += 1;
+    s.rec.stallMs += d;
+    s.rec.maxStallMs = Math.max(s.rec.maxStallMs, d);
+    s.dirty = true;
+  }
+
+  // Listeners go on the element itself: document-level ones would not survive
+  // the page rebuilding its document, and ad or preview clips are told apart
+  // by their length.
+  const watchedVideos = new WeakSet();
+  function watchVideo(v) {
+    if (watchedVideos.has(v)) return;
+    watchedVideos.add(v);
+    const main = () => sess && !(v.duration > 0 && v.duration < 30);
+    // Found already playing: its first frame was at the latest now.
+    if (main() && sess.rec.firstFrameMs == null && !v.paused && v.readyState >= 3) {
+      sess.rec.firstFrameMs = Math.round(now() - sess.t0);
+    }
+    v.addEventListener('playing', function () {
+      if (!main()) return;
+      endStall();
+      if (sess.rec.firstFrameMs == null) { sess.rec.firstFrameMs = Math.round(now() - sess.t0); sess.dirty = true; }
+    });
+    v.addEventListener('waiting', function () {
+      // Startup and seeks are not stalls.
+      if (!main() || v.paused || v.seeking || sess.rec.firstFrameMs == null) return;
+      if (!sess.stallAt) sess.stallAt = now();
+    });
+    v.addEventListener('seeking', function () {
+      if (!main()) return;
+      sess.stallAt = 0;
+      sess.rec.seeks += 1;
+      sess.lastCT = -1;
+      sess.dirty = true;
+    });
+    v.addEventListener('pause', function () { if (main()) endStall(); });
+    v.addEventListener('timeupdate', function () {
+      if (!main()) return;
+      if (sess.stallAt && v.readyState >= 3 && !v.paused) endStall();
+      const ct = v.currentTime;
+      if (sess.lastCT >= 0 && ct > sess.lastCT && ct - sess.lastCT < 2) sess.rec.playedS += ct - sess.lastCT;
+      sess.lastCT = ct;
+    });
+  }
+
+  function loadHistory() {
+    const list = loadJson(HIST_KEY);
+    return Array.isArray(list) ? list : [];
+  }
+
+  function saveSession() {
+    const s = sess;
+    if (!s || !s.dirty) return;
+    s.dirty = false;
+    const mb = {};
+    Object.keys(s.bytes).forEach(k => { mb[k] = +(s.bytes[k] / MB).toFixed(1); });
+    const cur = current.video;
+    const rec = Object.assign({}, s.rec, {
+      playedS: Math.round(s.rec.playedS),
+      MB: mb,
+      route: cur && cur.route ? cur.route.cls + ' ' + routeName(cur) : s.rec.route,
+      ongoingStallMs: s.stallAt ? Math.round(now() - s.stallAt) : undefined
+    });
+    const list = loadHistory();
+    const i = list.findIndex(r => r.id === rec.id && r.at === rec.at);
+    if (i >= 0) list[i] = rec; else list.push(rec);
+    let text = JSON.stringify(list);
+    while (text.length > HIST_MAX && list.length > 1) {
+      list.splice(0, Math.max(1, Math.floor(list.length / 10)));
+      text = JSON.stringify(list);
+    }
+    try { localStorage.setItem(HIST_KEY, text); } catch (_) {}
+  }
+
+  function closeSession() {
+    if (!sess) return;
+    endStall();
+    sess.dirty = true;
+    saveSession();
+    sess = null;
+  }
+
+  setInterval(saveSession, 15000);
+  try {
+    document.addEventListener('visibilitychange', function () { if (document.hidden) saveSession(); });
+    W.addEventListener('pagehide', closeSession);
+  } catch (_) {}
+
+  function exportHistory() {
+    saveSession();
+    const data = {
+      app: 'bili-smart-route', version: VERSION, exported: new Date().toISOString(),
+      cfg: loadJson(CFG_KEY), stats, history: loadHistory()
+    };
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
+    a.download = 'bili-smart-route-log-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  }
+
   // ---- UI -------------------------------------------------------------------
 
   let host = null;
@@ -1638,6 +1956,8 @@
         Object.keys(stats).forEach(k => delete stats[k]);
         saveJson(STATS_KEY, stats);
         render();
+      } else if (act === 'export') {
+        exportHistory();
       }
     });
     document.body.appendChild(host);
@@ -1680,22 +2000,28 @@
     }).join('');
     const lg = logs.slice(-14).reverse()
       .map(l => esc(l.t + ' ' + (T.ev[l.ev] || l.ev) + ' ' + l.h + '  ' + l.f + '  ' + tr(l.info))).join('\n');
+    const q = sess && sess.rec.id === pageId() ? sess.rec : null;
+    const qoe = q ? '<div class="muted" style="margin-top:4px">' +
+      esc(T.qoe(q.stalls, (q.stallMs / 1000).toFixed(1), q.firstFrameMs != null ? (q.firstFrameMs / 1000).toFixed(1) : null)) + '</div>' : '';
     const cur = uiLang();
     const langs = [['zh', '中'], ['en', 'EN'], ['ja', '日']]
       .map(p => '<button data-lang="' + p[0] + '"' + (p[0] === cur ? ' class="on"' : '') + '>' + p[1] + '</button>').join('');
     root.querySelector('.panel').innerHTML =
       '<div class="hd"><b>' + T.brand + '</b> <span class="muted">v' + VERSION + '</span><span class="lang">' + langs + '</span></div>' +
-      '<h4>' + T.files + '</h4><table>' + (rows || '<tr><td class="muted">' + T.noVideo + '</td></tr>') + '</table>' +
+      '<h4>' + T.files + '</h4><table>' + (rows || '<tr><td class="muted">' + T.noVideo + '</td></tr>') + '</table>' + qoe +
       '<h4>' + T.mirrors + '</h4><table>' + ml + '</table>' +
       '<h4>' + T.log + '</h4><div class="log">' + (lg || '<span class="muted">' + T.none + '</span>') + '</div>' +
       (multiAutoOff ? '<div class="warn" style="margin-top:6px">' + T.autoOff + esc(tr(multiAutoOff)) + '</div>' : '') +
       '<div class="btns"><button data-act="toggle">' + (cfg.enabled ? T.pause : T.resume) + '</button>' +
       '<button data-act="multi">' + T.multi + ((loadJson(CFG_KEY) || {}).multi === false ? T.off : T.on) + '</button>' +
-      '<button data-act="reset">' + T.reset + '</button></div>';
+      '<button data-act="reset">' + T.reset + '</button>' +
+      '<button data-act="export">' + T.exportLog + '</button></div>';
   }
 
   function uiLoop() {
     buildUi();
+    try { document.querySelectorAll('video').forEach(watchVideo); } catch (_) {}
+    if (sess && sess.rec.id !== pageId()) closeSession(); // moved to another video in place
     if (root && (current.video || !cfg.enabled)) render();
   }
   setInterval(uiLoop, 1000);
@@ -1709,6 +2035,9 @@
     stats,
     logs,
     register,
+    history: function () { saveSession(); return loadHistory(); },
+    clearHistory: function () { try { localStorage.removeItem(HIST_KEY); } catch (_) {} if (sess) sess.dirty = true; },
+    exportHistory,
     dump: function () {
       const uniq = Array.from(new Set(files.values()));
       return {
@@ -1723,6 +2052,9 @@
           rate: fsRate(f) && +fsRate(f).toFixed(1), MB: +(f.bytes / MB).toFixed(1), multi: f.multiUsed || null
         })),
         mainland: cfg.mainland.map(h => ({ h: shortHost(h), rate: statRate(h) && +statRate(h).toFixed(1), score: +hostScore(h).toFixed(1), n: stats[h] ? stats[h].n : 0, ttfb: stats[h] && stats[h].t && Math.round(stats[h].t) })),
+        memMB: +(storeMem / MB).toFixed(0),
+        // No video id here, so the dump stays safe to paste into an issue.
+        playback: sess ? { q: sess.rec.q, firstFrameMs: sess.rec.firstFrameMs, stalls: sess.rec.stalls, stallMs: sess.rec.stallMs, playedS: Math.round(sess.rec.playedS) } : null,
         log: logs.slice(-30)
       };
     }
