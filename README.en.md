@@ -28,10 +28,10 @@ Typical accelerator scripts either probe only the **start** of a file (which is 
 
 ## How it works
 
-1. **Per-file decision, probing the end, not the start.** Before the first large segment of a file, it probes the **end** of that exact range on the native edges Bilibili assigned. Cached → stay on the native edge (preferring the one Bilibili listed first when several are cached); popular videos are untouched.
-2. **Lookahead.** While on a native edge, it keeps probing about 15 s ahead of playback and switches before a cold region stalls the player. If a request to an edge receives no data within a few seconds, or is on course to miss the player's timeout at its current speed, it is ended early and the player retries elsewhere right away.
+1. **Per-file decision, probing inside the range, not the start.** Before a large segment of a file, it probes the **middle and end** of that exact range on the native edges Bilibili assigned (three points for segments of several MB); it counts as cached only if every point is. Readings are corrected with the browser's network-level timing, so a busy page cannot make a cached edge look cold (or the other way round). Cached → stay on the native edge (preferring the one Bilibili listed first when several are cached); popular videos are untouched.
+2. **Lookahead.** While on a native edge, it keeps probing about 15 s ahead of playback and switches before a cold region stalls the player; later segments re-check only the edge in use, and all edges race again only once it turns cold. If a request to an edge receives no data within a few seconds, or is on course to miss the player's timeout at its current speed, it is ended early and the player retries elsewhere right away.
 3. **Mainland fallback.** Candidates are Bilibili's official UPOS mirrors (they accept the same signed URLs), ranked by measured effective throughput (including first-byte latency, decaying over time), and verified with a small request before switching.
-4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once, reading about 20 s ahead (up to 64 MB); the player's requests are answered from memory. A block that stops moving for 3 s is re-fetched from another mirror.
+4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once, reading about 20 s ahead (up to 64 MB); the player's requests are answered from memory. A block that stops moving for 3 s is re-fetched from another mirror. Before switching, the mirrors' connections are warmed up and verified; a block the player is waiting on that falls behind gets an extra connection on a mirror that has already delivered.
 5. **Safety net.** If the player errors, or parallel fetches fail 3 times within a minute, that page falls back to plain requests.
 
 ## Test environment
@@ -68,7 +68,7 @@ Open any video and a translucent **⚡** label appears at the bottom left. The l
 - 🟢 **Native**: the overseas edge has it cached; direct.
 - 🟠 **Mainland**: switched to mainland mirrors; with several mirrors it shows e.g. `hw+ali`.
 
-Click it to open the panel: the current file's route and speed, measured throughput of each mainland mirror, the switch log, and three buttons — **Pause script**, **Parallel mirrors: on/off** and **Reset mirror stats**. The label hides in fullscreen.
+Click it to open the panel: the current file's route and speed, this video's stalls and time to first frame, measured throughput of each mainland mirror, the switch log, and four buttons — **Pause script**, **Parallel mirrors: on/off**, **Reset mirror stats** and **Export log**. The label hides in fullscreen.
 
 **4K tip:** in the player settings, set the preferred video codec to AV1 or HEVC. The same 4K video needs 17–30 Mbps in AVC but only 6–13 Mbps in AV1/HEVC.
 
@@ -96,6 +96,7 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
   readAheadSec: 20,     // seconds to read ahead
   readAheadMaxMB: 64,   // read-ahead cap (MB)
   storeCapMB: 192,      // memory per tab for fetched video blocks (MB)
+  keepBehindMB: 16,     // how much of the played part to keep (MB)
   hotMinMbps: 12,       // a native edge probing above this (and enough for the bitrate) counts as cached
   ui: true,             // show the bottom-left label
   lang: 'auto'          // panel language: auto (follow the browser) | zh | en | ja
@@ -106,15 +107,16 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 
 ## Traffic and resources
 
-- About 0.5–1 MB of extra probing when a large file starts; on a native edge, an extra 256 KB probe roughly every half probe window of progress.
+- About 0.5–1.5 MB of extra probing when a large file starts, plus one 64 KB warm-up request to each of up to 3 mainland mirrors; on a native edge, an extra 256 KB probe roughly every half probe window of progress.
 - The mainland route reads up to 64 MB ahead, with up to 2 requests to each of up to 3 mirrors at once.
-- Each tab uses at most about 192 MB of memory for fetched blocks; beyond that, already-played parts are dropped first.
+- On the mainland route a tab typically uses about 30–100 MB of memory for fetched blocks (the read-ahead, plus 16 MB kept of what has been played), at most 192 MB.
 
 ## Privacy
 
 - Collects and uploads nothing; talks only to Bilibili's own CDN hosts.
 - Mirror speed stats stay in your browser (`localStorage`, key `bax.stats.v2`).
-- The diagnostic command `__BAX__.dump()` prints only host names and stats, never signed video URLs, so it is safe to paste into an issue.
+- The viewing history also stays in your browser (`bax.hist.v1`, about 256 KB, oldest entries dropped): one record per video with its BV id, quality, time to first frame, stall count and duration, bytes per host and the switch log, for looking into stalls afterwards. **Export log** in the panel saves it, with the mirror stats, as a JSON file. **The exported file contains the BV ids of videos you watched**, so check it before sharing. To clear it, run `__BAX__.clearHistory()` in the console.
+- The diagnostic command `__BAX__.dump()` prints only host names and stats, never video ids or signed video URLs, so it is safe to paste into an issue.
 
 ## Limitations and known issues
 
@@ -125,7 +127,7 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 
 ## Reporting issues
 
-Please open an [issue](https://github.com/GenjiM1n4moto/bili-smart-route/issues) with the video's BV id, the quality and codec, and a screenshot of the panel's **Switch log** or the output of `JSON.stringify(__BAX__.dump())` from the console.
+Please open an [issue](https://github.com/GenjiM1n4moto/bili-smart-route/issues) with the video's BV id, the quality and codec, and a screenshot of the panel's **Switch log** or the output of `JSON.stringify(__BAX__.dump())` from the console. The file from **Export log** helps too (it lists the BV ids of videos you watched; remove unrelated ones first).
 
 ## Acknowledgements
 
