@@ -534,8 +534,15 @@
     r.rate = function () {
       if (!r.tHead || !r.bytes) return 0;
       // We saw the last byte well after the network delivered it: the main
-      // thread was busy, so go by the network's clock instead of ours.
-      if (r.net && r.tLast - r.t0 - r.net > 25) return r.bytes * 8 / r.net / 1000;
+      // thread was busy, so go by the network's clock instead of ours. Its span
+      // includes the first-byte wait, taken out as best known: our own reading
+      // (unless the jank came before the headers), the edge's usual figure, and
+      // at most 60% of the span.
+      if (r.net && r.tLast - r.t0 - r.net > 25) {
+        const s = stats[r.host];
+        const ttfb = Math.min(r.tHead - r.t0, s && s.t != null ? s.t : Infinity, r.net * 0.6);
+        return r.bytes * 8 / Math.max(r.net - ttfb, 4) / 1000;
+      }
       const end = r.finished || r.done ? r.tLast : now();
       return r.bytes * 8 / Math.max(end - r.tHead, 4) / 1000;
     };
