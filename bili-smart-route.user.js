@@ -473,7 +473,7 @@
   // also collected by an observer, which still gets them once the page's
   // timing buffer is full.
   const rtSeen = [];
-  const rtClaimed = new WeakSet();
+  const rtClaimed = new Set(); // by start|end: the observer and the buffer may hold separate copies
   try {
     new PerformanceObserver(function (list) {
       list.getEntries().forEach(function (e) {
@@ -489,11 +489,13 @@
     try { list = list.concat(performance.getEntriesByName(r.url, 'resource')); } catch (_) {}
     let best = null;
     for (const e of list) {
-      if (rtClaimed.has(e) || e.initiatorType !== 'fetch' || e.startTime < r.t0 - 2 || !(e.responseEnd > e.startTime)) continue;
+      if (rtClaimed.has(e.startTime + '|' + e.responseEnd) || e.initiatorType !== 'fetch' ||
+          e.startTime < r.t0 - 2 || !(e.responseEnd > e.startTime)) continue;
       if (!best || Math.abs(e.startTime - r.t0) < Math.abs(best.startTime - r.t0)) best = e;
     }
     if (!best) return 0;
-    rtClaimed.add(best);
+    if (rtClaimed.size > 400) rtClaimed.clear();
+    rtClaimed.add(best.startTime + '|' + best.responseEnd);
     return best.responseEnd - best.startTime;
   }
 
