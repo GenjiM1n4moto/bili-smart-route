@@ -10,7 +10,7 @@
 // @name:ja            Bilibili Smart Route
 // @name:ja-JP         Bilibili Smart Route
 // @namespace          bili-smart-route
-// @version            1.3.0
+// @version            1.3.1
 // @description        海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-CN  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-TW  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
@@ -42,7 +42,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.3.0';
+  const VERSION = '1.3.1';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v2';
   const KB = 1024;
@@ -116,7 +116,7 @@
       pause: '暂停脚本（刷新）', resume: '启用脚本（刷新）',
       multi: '多镜像并行：', on: '开', off: '关', reset: '清空镜像统计', exportLog: '导出日志',
       qoe: (n, sec, ff) => '本视频：卡顿 ' + n + ' 次' + (n ? '，共 ' + sec + ' 秒' : '') + (ff != null ? '，首帧 ' + ff + ' 秒' : ''),
-      ev: { native: '原生', mainland: '大陆', fail: '失败', timeout: '超时', stall: '卡住', storeFail: '并行失败', guard: '保护' },
+      ev: { native: '原生', mainland: '大陆', fail: '失败', timeout: '超时', stall: '卡住', storeFail: '并行失败', guard: '保护', whole: '整文件' },
       stallInfo: mb => '块 @' + mb + 'MB 换源',
       whyFails: () => '一分钟内 3 次并行下载失败',
       whyMedia: code => '播放器报错 (MediaError ' + code + ')',
@@ -132,7 +132,7 @@
       pause: 'Pause script (reload)', resume: 'Enable script (reload)',
       multi: 'Parallel mirrors: ', on: 'on', off: 'off', reset: 'Reset mirror stats', exportLog: 'Export log',
       qoe: (n, sec, ff) => 'This video: ' + n + (n === 1 ? ' stall' : ' stalls') + (n ? ' (' + sec + ' s)' : '') + (ff != null ? ', first frame ' + ff + ' s' : ''),
-      ev: { native: 'native', mainland: 'mainland', fail: 'failed', timeout: 'timeout', stall: 'stalled', storeFail: 'parallel failed', guard: 'guard' },
+      ev: { native: 'native', mainland: 'mainland', fail: 'failed', timeout: 'timeout', stall: 'stalled', storeFail: 'parallel failed', guard: 'guard', whole: 'whole file' },
       stallInfo: mb => 'block @' + mb + 'MB re-fetched elsewhere',
       whyFails: () => '3 parallel fetch failures within a minute',
       whyMedia: code => 'player error (MediaError ' + code + ')',
@@ -148,7 +148,7 @@
       pause: 'スクリプトを一時停止（再読み込み）', resume: 'スクリプトを有効化（再読み込み）',
       multi: '複数ミラー並列：', on: 'オン', off: 'オフ', reset: 'ミラー統計をリセット', exportLog: 'ログを書き出す',
       qoe: (n, sec, ff) => 'この動画：停止 ' + n + ' 回' + (n ? '（計 ' + sec + ' 秒）' : '') + (ff != null ? '、最初のフレーム ' + ff + ' 秒' : ''),
-      ev: { native: 'ネイティブ', mainland: '本土', fail: '失敗', timeout: 'タイムアウト', stall: '停滞', storeFail: '並列失敗', guard: '保護' },
+      ev: { native: 'ネイティブ', mainland: '本土', fail: '失敗', timeout: 'タイムアウト', stall: '停滞', storeFail: '並列失敗', guard: '保護', whole: 'ファイル全体' },
       stallInfo: mb => 'ブロック @' + mb + 'MB を別ミラーで再取得',
       whyFails: () => '1 分以内に並列取得が 3 回失敗',
       whyMedia: code => 'プレーヤーエラー (MediaError ' + code + ')',
@@ -232,7 +232,7 @@
     if (!m) return null;
     const start = +m[1];
     const end = m[2] ? +m[2] : start + 4 * MB - 1;
-    return { start, end, size: end - start + 1 };
+    return { start, end, size: end - start + 1, open: !m[2] };
   }
 
   function headerOf(list, name) {
@@ -959,6 +959,9 @@
     const onRoute = fs.route && fs.route.host === host;
 
     sessBytes(host, loaded);
+    // Ended on purpose after the whole file came back: says nothing about the
+    // host, and the player's retry goes out keyed.
+    if (m.whole) return;
     if (m.timedOut || (status === 0 && loaded > 0)) {
       noteRate(host, loaded * 8 / Math.max(dur, 1) / 1000, m.tHead ? m.tHead - m.tSend : null);
       log(fs, 'timeout', host, (loaded / MB).toFixed(1) + 'MB/' + (dur / 1000).toFixed(1) + 's');
@@ -1496,7 +1499,23 @@
 
   function onReadyState() {
     const m = metaOf.get(this);
-    if (m && m.media && this.readyState === 2 && !m.tHead) m.tHead = now();
+    if (!m || !m.media || this.readyState !== 2) return;
+    if (!m.tHead) m.tHead = now();
+    if (!m.sent || m.keyed || !m.range || m.range.open || shimmed.has(this) || this.status !== 200) return;
+    // Asked for a byte range, got the whole file (see rangeKeyed). End it now
+    // instead of letting it run into the player's timeout, and key every later
+    // range on this host. Requests without a timeout are left alone, as in the
+    // watchdog. A keyed request that still gets 200 is not retried this way:
+    // the key did not help there, and fast retries would only burn the
+    // player's retry count.
+    const cl = +this.getResponseHeader('content-length') || 0;
+    if (cl && cl <= m.range.size) return;
+    m.whole = true;
+    if (!keyedHosts.has(m.host)) {
+      keyedHosts.add(m.host);
+      log(m.fs, 'whole', m.host, 'HTTP 200' + (cl ? ' ' + (cl / MB).toFixed(0) + 'MB' : ''));
+    }
+    if (this.timeout > 0) { try { this.timeout = 1; } catch (_) {} }
   }
 
   function onTimeout() {
@@ -1585,12 +1604,33 @@
     return xSetHeader.apply(this, arguments);
   };
 
+  // Akamai sends its 206 answers with max-age of a year, so the browser caches
+  // them — one entry per URL, filled range by range. With that entry in play,
+  // every other range request on the URL comes back as 200 with the whole file
+  // (400 MB+; never with cache: 'no-store', never on cosov). The player's
+  // segment then cannot finish, times out (5 s once the buffer is low), the
+  // retry works, and the next segment hits the same: a 5 s gap per segment,
+  // which playback at 1.5x and up cannot outrun. A query parameter per range
+  // gives each range its own cache entry; the edges leave it out of their
+  // cache key (same hits), and a repeated range is still a browser cache hit.
+  const keyedHosts = new Set(); // other hosts seen answering a range with 200
+  function rangeKeyed(url, raw) {
+    const r = /bytes=(\d+-\d*)/.exec(raw || '');
+    return r ? url + (url.indexOf('?') === -1 ? '?' : '&') + 'bsr=' + r[1] : url;
+  }
+
   function fire(xhr, m, target, args) {
     m.deferred = false;
-    if (target && target.url && target.url !== m.url) {
+    let url = target && target.url ? target.url : m.url;
+    const host = target && target.url ? target.host : m.u.host;
+    const keyed = !!m.range && (isAkamai(host) || keyedHosts.has(host));
+    if (keyed) url = rangeKeyed(url, headerOf(m.headers, 'range'));
+    m.keyed = false;
+    if (url !== m.url) {
       try {
-        xOpen.call(xhr, m.method, target.url, true, m.user, m.pass);
+        xOpen.call(xhr, m.method, url, true, m.user, m.pass);
         m.headers.forEach(h => xSetHeader.call(xhr, h[0], h[1]));
+        m.keyed = keyed;
       } catch (_) {
         target = null;
       }
@@ -2062,6 +2102,7 @@
         })),
         mainland: cfg.mainland.map(h => ({ h: shortHost(h), rate: statRate(h) && +statRate(h).toFixed(1), score: +hostScore(h).toFixed(1), n: stats[h] ? stats[h].n : 0, ttfb: stats[h] && stats[h].t && Math.round(stats[h].t) })),
         memMB: +(storeMem / MB).toFixed(0),
+        keyedHosts: Array.from(keyedHosts).map(shortHost),
         // No video id here, so the dump stays safe to paste into an issue.
         playback: sess ? { q: sess.rec.q, firstFrameMs: sess.rec.firstFrameMs, stalls: sess.rec.stalls, stallMs: sess.rec.stallMs, playedS: Math.round(sess.rec.playedS) } : null,
         log: logs.slice(-30)
