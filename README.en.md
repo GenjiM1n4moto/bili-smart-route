@@ -33,6 +33,7 @@ Typical accelerator scripts either probe only the **start** of a file (which is 
 3. **Mainland fallback.** Candidates are Bilibili's official UPOS mirrors (they accept the same signed URLs), ranked by measured effective throughput (including first-byte latency, decaying over time), and verified with a small request before switching.
 4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once, reading about 20 s ahead (up to 64 MB); the player's requests are answered from memory. A block that stops moving for 3 s is re-fetched from another mirror. Before switching, the mirrors' connections are warmed up and verified; a block the player is waiting on that falls behind gets an extra connection on a mirror that has already delivered.
 5. **Safety net.** If the player errors, or parallel fetches fail 3 times within a minute, that page falls back to plain requests.
+6. **Working around a browser-cache trap.** Akamai edges send segment responses with a one-year cache lifetime. Once the browser has cached them, every other range request on that file comes back as the whole file (hundreds of MB), the segment always times out, and long videos stall almost constantly at higher playback speeds. The script adds a per-range parameter to requests sent to Akamai; the CDN's own caching is unaffected. If another edge does the same, the script ends that request at once so the player retries, and adds the parameter for that edge from then on.
 
 ## Test environment
 
