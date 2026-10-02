@@ -1612,7 +1612,7 @@
   // retry works, and the next segment hits the same: a 5 s gap per segment,
   // which playback at 1.5x and up cannot outrun. A query parameter per range
   // gives each range its own cache entry; the edges leave it out of their
-  // cache key (same hits), and a repeated range is still a browser cache hit.
+  // cache key (same hits and speed, checked on cold and warm ranges).
   const keyedHosts = new Set(); // other hosts seen answering a range with 200
   function rangeKeyed(url, raw) {
     const r = /bytes=(\d+-\d*)/.exec(raw || '');
