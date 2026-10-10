@@ -28,7 +28,7 @@ Typical accelerator scripts either probe only the **start** of a file (which is 
 
 ## How it works
 
-1. **Per-file decision, probing inside the range, not the start.** Before a large segment of a file, it probes the **middle and end** of that exact range on the native edges Bilibili assigned (three points for segments of several MB); it counts as cached only if every point is. Readings are corrected with the browser's network-level timing, so a busy page cannot make a cached edge look cold (or the other way round). Cached → stay on the native edge (preferring the one Bilibili listed first when several are cached); popular videos are untouched.
+1. **Per-file decision, probing inside the range, not the start.** Before a large segment of a file, it probes the **middle and end** of that exact range on the native edges Bilibili assigned (three points for segments of several MB); it counts as cached only if every point is. Readings are corrected with the browser's network-level timing, so a busy page cannot make a cached edge look cold (or the other way round). Cached → stay on the native edge (preferring the one Bilibili listed first when several are cached); popular videos are untouched. Starts, seeks and edge failures are raced like this at any bitrate; low-bitrate files only skip the lookahead below.
 2. **Lookahead.** While on a native edge, it keeps probing about 15 s ahead of playback and switches before a cold region stalls the player; later segments re-check only the edge in use, and all edges race again only once it turns cold. If a request to an edge receives no data within a few seconds, or is on course to miss the player's timeout at its current speed, it is ended early and the player retries elsewhere right away.
 3. **Mainland fallback.** Candidates are Bilibili's official UPOS mirrors (they accept the same signed URLs), ranked by measured effective throughput (including first-byte latency, decaying over time), and verified with a small request before switching.
 4. **Parallel mirrors + read-ahead.** On the mainland route, the video file is fetched in 2 MB blocks from up to 3 mirrors at once, reading about 20 s ahead (up to 64 MB); the player's requests are answered from memory. A block that stops moving for 3 s is re-fetched from another mirror. Before switching, the mirrors' connections are warmed up and verified; a block the player is waiting on that falls behind gets an extra connection on a mirror that has already delivered.
@@ -69,7 +69,7 @@ Open any video and a translucent **⚡** label appears at the bottom left. The l
 - 🟢 **Native**: the overseas edge has it cached; direct.
 - 🟠 **Mainland**: switched to mainland mirrors; with several mirrors it shows e.g. `hw+ali`.
 
-Click it to open the panel: the current file's route and speed, this video's stalls and time to first frame, measured throughput of each mainland mirror, the switch log, and four buttons — **Pause script**, **Parallel mirrors: on/off**, **Reset mirror stats** and **Export log**. The label hides in fullscreen.
+Click it to open the panel: the current file's route and speed, this video's stalls, time to first frame and average seek wait, measured throughput of each mainland mirror, the switch log, and four buttons — **Pause script**, **Parallel mirrors: on/off**, **Reset mirror stats** and **Export log**. The label hides in fullscreen.
 
 **4K tip:** in the player settings, set the preferred video codec to AV1 or HEVC. The same 4K video needs 17–30 Mbps in AVC but only 6–13 Mbps in AV1/HEVC.
 
@@ -116,7 +116,7 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 
 - Collects and uploads nothing; talks only to Bilibili's own CDN hosts.
 - Mirror speed stats stay in your browser (`localStorage`, key `bax.stats.v2`).
-- The viewing history also stays in your browser (`bax.hist.v1`, about 256 KB, oldest entries dropped): one record per video with its BV id, quality, time to first frame, stall count and duration, bytes per host and the switch log, for looking into stalls afterwards. **Export log** in the panel saves it, with the mirror stats, as a JSON file. **The exported file contains the BV ids of videos you watched**, so check it before sharing. To clear it, run `__BAX__.clearHistory()` in the console.
+- The viewing history also stays in your browser (`bax.hist.v1`, about 256 KB, oldest entries dropped): one record per video with its BV id, quality, time to first frame, stall count and duration, seek waits, bytes per host and the switch log, for looking into stalls afterwards. **Export log** in the panel saves it, with the mirror stats, as a JSON file. **The exported file contains the BV ids of videos you watched**, so check it before sharing. To clear it, run `__BAX__.clearHistory()` in the console.
 - The diagnostic command `__BAX__.dump()` prints only host names and stats, never video ids or signed video URLs, so it is safe to paste into an issue.
 
 ## Limitations and known issues
