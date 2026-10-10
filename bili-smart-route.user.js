@@ -10,7 +10,7 @@
 // @name:ja            Bilibili Smart Route
 // @name:ja-JP         Bilibili Smart Route
 // @namespace          bili-smart-route
-// @version            1.4.0
+// @version            1.4.1
 // @description        海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-CN  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-TW  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
@@ -42,7 +42,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.4.0';
+  const VERSION = '1.4.1';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v2';
   const KB = 1024;
@@ -1154,6 +1154,16 @@
   function schedule(fs) {
     const st = storeOf(fs);
     const usable = x => x.want && !x.dead && x.url;
+    // Blocks the player is waiting on go out one per mirror first. Each mirror
+    // is one connection whose rate its blocks share, so two waited-on blocks
+    // on the best mirror take about twice as long as one each on two — unless
+    // the other mirror is far worse.
+    const open = st.hosts.filter(x => usable(x) && x.active < cfg.perHost);
+    const top = Math.max.apply(null, open.map(x => hostScore(x.h)).concat(0));
+    open.filter(x => hostScore(x.h) >= top / 2).forEach(function (x) {
+      const b = nextBlock(fs, x);
+      if (b && b.need && !b.runs.length) runBlock(fs, x, b);
+    });
     st.hosts.forEach(function (x) {
       while (usable(x) && x.active < cfg.perHost) {
         const b = nextBlock(fs, x);
@@ -1182,11 +1192,11 @@
   function runBlock(fs, x, b) {
     const st = storeOf(fs);
     const ac = new AbortController();
-    const r = { x, ac, t0: now(), last: now(), head: 0, bytes: 0, aborted: false };
+    const r = { x, ac, t0: now(), last: now(), head: 0, bytes: 0, aborted: false, buf: null, off: 0 };
     b.runs.push(r);
     x.active += 1;
     let released = false;
-    const release = function () {
+    const release = r.release = function () {
       if (released) return;
       released = true;
       x.active -= 1;
@@ -1204,7 +1214,7 @@
       const cr = /\/(\d+)\s*$/.exec(res.headers.get('content-range') || '');
       if (cr) st.eof = Math.min(st.eof, +cr[1]);
       st.waiters.forEach(w => { if (b.idx >= w.i0 && b.idx <= w.i1) headWaiter(w); });
-      buf = new Uint8Array(BLOCK);
+      buf = r.buf = new Uint8Array(BLOCK);
       const reader = res.body.getReader();
       function step() {
         return reader.read().then(function (c) {
@@ -1213,15 +1223,20 @@
           if (off + c.value.length > BLOCK) throw new Error('overflow');
           buf.set(c.value, off);
           off += c.value.length;
+          r.off = off;
           r.bytes += c.value.length;
           r.last = now();
+          // A request ending inside this block can be answered before the
+          // block is complete (see checkWaiter).
+          st.waiters.forEach(w => { if (b.idx >= w.i0 && b.idx <= w.i1) checkWaiter(fs, w); });
           return step();
         });
       }
       return step();
     }).then(function () {
       release();
-      if (b.done) return schedule(fs);
+      // Done already, or dropped by a seek while its last bytes were landing.
+      if (b.done || st.blocks.get(b.idx) !== b) return schedule(fs);
       if (buf && off < Math.min(BLOCK, st.eof - b.s)) throw new Error('short');
       b.done = true;
       b.data = buf ? buf.subarray(0, off) : new Uint8Array(0);
@@ -1300,22 +1315,38 @@
     }
   }
 
+  // Bytes of a block present from its start: all of it once done, otherwise
+  // what its furthest run has streamed so far.
+  function blockHave(b) {
+    if (b.done) return { data: b.data, n: b.data ? b.data.length : 0 };
+    let best = null;
+    b.runs.forEach(r => { if (r.buf && (!best || r.off > best.off)) best = r; });
+    return best ? { data: best.buf, n: best.off } : { data: null, n: 0 };
+  }
+
+  // A request is answered as soon as every byte of it is here, including
+  // bytes still streaming into an unfinished block: after a seek the
+  // segment's last block need not land in full first (2 MB at the 10 Mbps a
+  // mirror connection gives is 1.6 s).
   function checkWaiter(fs, w) {
     const st = storeOf(fs);
+    const end = Math.min(w.b, st.eof - 1);
+    const parts = [];
     for (let i = w.i0; i <= w.i1; i += 1) {
       if (i * BLOCK >= st.eof) continue;
       const b = st.blocks.get(i);
-      if (!b || !b.done) return;
+      if (!b) return;
+      const have = blockHave(b);
+      if (!b.done && have.n < Math.min(end, b.s + BLOCK - 1) - b.s + 1) return;
+      parts.push({ b, have });
     }
-    const end = Math.min(w.b, st.eof - 1);
     const out = new Uint8Array(Math.max(0, end - w.a + 1));
-    for (let i = w.i0; i <= w.i1; i += 1) {
-      const b = st.blocks.get(i);
-      if (!b || !b.data) continue;
-      const from = Math.max(w.a, b.s);
-      const to = Math.min(end, b.s + b.data.length - 1);
-      if (to >= from) out.set(b.data.subarray(from - b.s, to - b.s + 1), from - w.a);
-    }
+    parts.forEach(function (p) {
+      if (!p.have.data) return;
+      const from = Math.max(w.a, p.b.s);
+      const to = Math.min(end, p.b.s + p.have.n - 1);
+      if (to >= from) out.set(p.have.data.subarray(from - p.b.s, to - p.b.s + 1), from - w.a);
+    });
     st.waiters.delete(w);
     releaseNeed(st, w);
     headWaiter(w);
@@ -1369,6 +1400,17 @@
     const seek = range.start < st.low - 8 * MB || range.start > st.raEnd + BLOCK;
     st.low = range.start;
     st.raEnd = seek ? range.end + ahead : Math.max(st.raEnd, range.end + ahead);
+    if (seek) {
+      // Read-ahead for the old position would keep both slots on every mirror
+      // and a share of each connection while the new position waits behind it
+      // (2–4 s per seek in testing). Drop it; its blocks are fetched again if
+      // the player comes back.
+      st.blocks.forEach(function (b) {
+        if (b.done || b.need || (b.s + BLOCK > range.start && b.s <= st.raEnd)) return;
+        b.runs.slice().forEach(r => { r.aborted = true; r.ac.abort(); r.release(); });
+        dropBlock(st, b);
+      });
+    }
     st.waiters.add(w);
     schedule(fs);
     // Never answer inside send(): the player sets up its bookkeeping right
