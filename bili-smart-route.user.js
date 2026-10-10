@@ -10,7 +10,7 @@
 // @name:ja            Bilibili Smart Route
 // @name:ja-JP         Bilibili Smart Route
 // @namespace          bili-smart-route
-// @version            1.3.1
+// @version            1.4.0
 // @description        海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-CN  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
 // @description:zh-TW  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
@@ -42,7 +42,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.3.1';
+  const VERSION = '1.4.0';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v2';
   const KB = 1024;
@@ -66,7 +66,7 @@
     enabled: true,
     ui: true,
     lang: 'auto',          // panel language: auto (browser) | zh | en | ja
-    raceMinMbps: 1,        // files below this bitrate (audio, low-res) skip pre-probing
+    raceMinMbps: 1,        // files below this bitrate (audio, low-res) skip look-ahead probing; start/seek are raced for all
     hotMinMbps: 12,        // a native edge probing above this is "cached"; cold edges do 0.7–6
     raceTimeoutMs: 1500,   // longest a segment waits for the probe race
     probeBytes: 512 * KB,
@@ -115,7 +115,7 @@
       autoOff: '本页已自动停用多镜像：',
       pause: '暂停脚本（刷新）', resume: '启用脚本（刷新）',
       multi: '多镜像并行：', on: '开', off: '关', reset: '清空镜像统计', exportLog: '导出日志',
-      qoe: (n, sec, ff) => '本视频：卡顿 ' + n + ' 次' + (n ? '，共 ' + sec + ' 秒' : '') + (ff != null ? '，首帧 ' + ff + ' 秒' : ''),
+      qoe: (n, sec, ff, sk, skAvg) => '本视频：卡顿 ' + n + ' 次' + (n ? '，共 ' + sec + ' 秒' : '') + (ff != null ? '，首帧 ' + ff + ' 秒' : '') + (sk ? '，跳转 ' + sk + ' 次（平均等 ' + skAvg + ' 秒）' : ''),
       ev: { native: '原生', mainland: '大陆', fail: '失败', timeout: '超时', stall: '卡住', storeFail: '并行失败', guard: '保护', whole: '整文件' },
       stallInfo: mb => '块 @' + mb + 'MB 换源',
       whyFails: () => '一分钟内 3 次并行下载失败',
@@ -131,7 +131,7 @@
       autoOff: 'Parallel mirrors turned off on this page: ',
       pause: 'Pause script (reload)', resume: 'Enable script (reload)',
       multi: 'Parallel mirrors: ', on: 'on', off: 'off', reset: 'Reset mirror stats', exportLog: 'Export log',
-      qoe: (n, sec, ff) => 'This video: ' + n + (n === 1 ? ' stall' : ' stalls') + (n ? ' (' + sec + ' s)' : '') + (ff != null ? ', first frame ' + ff + ' s' : ''),
+      qoe: (n, sec, ff, sk, skAvg) => 'This video: ' + n + (n === 1 ? ' stall' : ' stalls') + (n ? ' (' + sec + ' s)' : '') + (ff != null ? ', first frame ' + ff + ' s' : '') + (sk ? ', ' + sk + (sk === 1 ? ' seek' : ' seeks') + ' (avg wait ' + skAvg + ' s)' : ''),
       ev: { native: 'native', mainland: 'mainland', fail: 'failed', timeout: 'timeout', stall: 'stalled', storeFail: 'parallel failed', guard: 'guard', whole: 'whole file' },
       stallInfo: mb => 'block @' + mb + 'MB re-fetched elsewhere',
       whyFails: () => '3 parallel fetch failures within a minute',
@@ -147,7 +147,7 @@
       autoOff: 'このページでは複数ミラーを自動停止しました：',
       pause: 'スクリプトを一時停止（再読み込み）', resume: 'スクリプトを有効化（再読み込み）',
       multi: '複数ミラー並列：', on: 'オン', off: 'オフ', reset: 'ミラー統計をリセット', exportLog: 'ログを書き出す',
-      qoe: (n, sec, ff) => 'この動画：停止 ' + n + ' 回' + (n ? '（計 ' + sec + ' 秒）' : '') + (ff != null ? '、最初のフレーム ' + ff + ' 秒' : ''),
+      qoe: (n, sec, ff, sk, skAvg) => 'この動画：停止 ' + n + ' 回' + (n ? '（計 ' + sec + ' 秒）' : '') + (ff != null ? '、最初のフレーム ' + ff + ' 秒' : '') + (sk ? '、シーク ' + sk + ' 回（平均待ち ' + skAvg + ' 秒）' : ''),
       ev: { native: 'ネイティブ', mainland: '本土', fail: '失敗', timeout: 'タイムアウト', stall: '停滞', storeFail: '並列失敗', guard: '保護', whole: 'ファイル全体' },
       stallInfo: mb => 'ブロック @' + mb + 'MB を別ミラーで再取得',
       whyFails: () => '1 分以内に並列取得が 3 回失敗',
@@ -411,9 +411,9 @@
   // ---- thresholds -----------------------------------------------------------
 
   const bwMbps = fs => (fs.bw || (fs.kind === 'audio' ? 0.2e6 : 2e6)) / 1e6;
-  // Rate at which the native edge is good enough to keep. Low bitrates are fine
-  // even from a cold edge (8 Mbps is 40x a 360P stream); for 1080P and up it
-  // takes a properly cached edge, which probes at 50+ Mbps against 0.7–6 cold.
+  // Rate at which the native edge is good enough to keep: a few times the
+  // bitrate, capped at hotMinMbps — a cached edge probes at 50+ Mbps, a cold one
+  // at 0–6.
   const hotMin = fs => Math.max(1.5 * bwMbps(fs), Math.min(cfg.hotMinMbps, 4 * bwMbps(fs)));
   const needMbps = fs => Math.max(0.25, 1.25 * bwMbps(fs));
   const important = fs => bwMbps(fs) >= cfg.raceMinMbps;
@@ -890,9 +890,13 @@
     const seek = range && fs.lastEnd >= 0 &&
       (start < fs.lastStart - ahead || start > fs.lastEnd + ahead);
 
+    // Start, seek and failover are raced whatever the bitrate: a cold edge now
+    // sends 0–0.8 Mbps, often nothing for seconds, which stalls a 0.5 Mbps
+    // file as surely as a 4K one. Left to the watchdog, each cold edge cost a
+    // 3 s kill plus the player's retry pause — 10–18 s per start or seek.
     if (!r) {
-      if (important(fs) && sizeable) return startRace(fs, reqU, range, 'start').then(() => fs.route && fs.route.host);
-      // Low-bitrate files (audio) are never raced, but should not keep going
+      if (sizeable) return startRace(fs, reqU, range, 'start').then(() => fs.route && fs.route.host);
+      // Small requests (init, index) are not raced, but should not keep going
       // back to a host that has already failed them.
       if (isFailed(fs, reqU.host)) return nativeCandidates(fs)[0] || mainlandList(fs)[0] || reqU.host;
       return reqU.host;
@@ -901,11 +905,11 @@
       // The routed host just failed for this file (typically the player's
       // retry after a stuck request): race what is left on this very request,
       // falling to mainland when the remaining edges are cold.
-      if (important(fs) && sizeable && range) return startRace(fs, reqU, range, 'failover').then(() => fs.route && fs.route.host);
+      if (sizeable && range) return startRace(fs, reqU, range, 'failover').then(() => fs.route && fs.route.host);
       return nativeCandidates(fs)[0] || mainlandList(fs)[0] || reqU.host;
     }
     if (seek) {
-      if (r.cls === 'native' && important(fs) && sizeable) {
+      if (r.cls === 'native' && sizeable) {
         return startRace(fs, reqU, range, 'seek').then(() => fs.route && fs.route.host);
       }
       if (r.cls === 'mainland') fs.recheckAt = 0;
@@ -1776,10 +1780,11 @@
     if (sess) closeSession();
     if (!id) return null;
     sess = {
-      t0: now(), dirty: true, stallAt: 0, lastCT: -1, bytes: {},
+      t0: now(), dirty: true, stallAt: 0, seekAt: 0, lastCT: -1, bytes: {},
       rec: {
         id, at: Date.now(), v: VERSION, q: '', bw: null, natives: '', route: '',
-        firstFrameMs: null, playedS: 0, stalls: 0, stallMs: 0, maxStallMs: 0, seeks: 0, MB: {}, ev: []
+        firstFrameMs: null, playedS: 0, stalls: 0, stallMs: 0, maxStallMs: 0, seeks: 0,
+        seekN: 0, seekMs: 0, maxSeekMs: 0, slowSeeks: 0, MB: {}, ev: []
       }
     };
     return sess;
@@ -1844,11 +1849,27 @@
       if (!main() || v.paused || v.seeking || sess.rec.firstFrameMs == null) return;
       if (!sess.stallAt) sess.stallAt = now();
     });
+    // A seek's wait is from the player asking for the new position to the
+    // element having data there. Not a stall, but with dozens of seeks an hour
+    // it is most of the waiting a viewer sees; the startup seek (?t=, resume)
+    // is part of the first frame instead.
     v.addEventListener('seeking', function () {
       if (!main()) return;
       sess.stallAt = 0;
       sess.rec.seeks += 1;
       sess.lastCT = -1;
+      sess.seekAt = sess.rec.firstFrameMs != null ? now() : 0;
+      sess.dirty = true;
+    });
+    v.addEventListener('seeked', function () {
+      if (!main() || !sess.seekAt) return;
+      const d = Math.round(now() - sess.seekAt);
+      sess.seekAt = 0;
+      const r = sess.rec;
+      r.seekN += 1;
+      r.seekMs += d;
+      r.maxSeekMs = Math.max(r.maxSeekMs, d);
+      if (d >= 1000) r.slowSeeks += 1;
       sess.dirty = true;
     });
     v.addEventListener('pause', function () { if (main()) endStall(); });
@@ -2051,7 +2072,8 @@
       .map(l => esc(l.t + ' ' + (T.ev[l.ev] || l.ev) + ' ' + l.h + '  ' + l.f + '  ' + tr(l.info))).join('\n');
     const q = sess && sess.rec.id === pageId() ? sess.rec : null;
     const qoe = q ? '<div class="muted" style="margin-top:4px">' +
-      esc(T.qoe(q.stalls, (q.stallMs / 1000).toFixed(1), q.firstFrameMs != null ? (q.firstFrameMs / 1000).toFixed(1) : null)) + '</div>' : '';
+      esc(T.qoe(q.stalls, (q.stallMs / 1000).toFixed(1), q.firstFrameMs != null ? (q.firstFrameMs / 1000).toFixed(1) : null,
+        q.seekN, q.seekN ? (q.seekMs / q.seekN / 1000).toFixed(1) : null)) + '</div>' : '';
     const cur = uiLang();
     const langs = [['zh', '中'], ['en', 'EN'], ['ja', '日']]
       .map(p => '<button data-lang="' + p[0] + '"' + (p[0] === cur ? ' class="on"' : '') + '>' + p[1] + '</button>').join('');
@@ -2104,7 +2126,10 @@
         memMB: +(storeMem / MB).toFixed(0),
         keyedHosts: Array.from(keyedHosts).map(shortHost),
         // No video id here, so the dump stays safe to paste into an issue.
-        playback: sess ? { q: sess.rec.q, firstFrameMs: sess.rec.firstFrameMs, stalls: sess.rec.stalls, stallMs: sess.rec.stallMs, playedS: Math.round(sess.rec.playedS) } : null,
+        playback: sess ? {
+          q: sess.rec.q, firstFrameMs: sess.rec.firstFrameMs, stalls: sess.rec.stalls, stallMs: sess.rec.stallMs, playedS: Math.round(sess.rec.playedS),
+          seekN: sess.rec.seekN, seekAvgMs: sess.rec.seekN ? Math.round(sess.rec.seekMs / sess.rec.seekN) : null, maxSeekMs: sess.rec.maxSeekMs, slowSeeks: sess.rec.slowSeeks
+        } : null,
         log: logs.slice(-30)
       };
     }
