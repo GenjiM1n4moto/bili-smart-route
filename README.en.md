@@ -85,7 +85,7 @@ Click it to open the panel: the current file's route and speed, this video's sta
 
 - **No re-encoding.** Picture and sound are taken from Bilibili's fragmented files as they are and re-wrapped into a plain MP4 (or a native FLAC), so quality is exactly what plays online; the file has a full index, so it seeks right away and opens in editing software.
 - **Fast.** It uses the same routing as playback: the file is fetched in 4 MB pieces from the native edges and the mainland mirrors at once (up to 8 connections), spread by measured speed; a piece that stalls, or crawls while another host is far faster, moves to another host, keeping what already arrived. Measured (Japan, signed out, 480P): a 92-minute, 409 MB video took 28–49 s.
-- **Large files do not fill memory.** Chrome / Edge show a **Save as** dialog and write to disk as the download goes, holding at most about 32 MB per stream in memory. Browsers that cannot write to disk directly, such as Firefox, keep the whole file in memory and save it at the end, so very large files may fail there.
+- **Large files do not fill memory.** Chrome / Edge show a **Save as** dialog and write to disk as the download goes, holding typically 30–50 MB per stream in memory. Browsers that cannot write to disk directly, such as Firefox, keep the whole file in memory and save it at the end, so very large files may fail there.
 - A download can be cancelled; the ⚡ label shows its progress. On cancel or failure, the empty file the **Save as** dialog created is removed.
 - Chrome cannot play the Dolby (E-AC-3) track; use VLC, PotPlayer, mpv or similar. Some players do not support a FLAC track inside MP4 either; pick AAC then, or download the `.flac` on its own.
 
@@ -131,7 +131,7 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 - About 0.5–1.5 MB of extra probing when a large file starts, plus one 64 KB warm-up request to each of up to 3 mainland mirrors; on a native edge, an extra 256 KB probe roughly every half probe window of progress.
 - The mainland route reads up to 64 MB ahead, with up to 2 requests to each of up to 3 mirrors at once.
 - On the mainland route a tab typically uses about 30–100 MB of memory for fetched blocks (the read-ahead, plus 16 MB kept of what has been played), at most 192 MB.
-- Downloads run only when you click a button, with up to 8 requests at once; when writing to disk, at most about 32 MB per stream is held in memory.
+- Downloads run only when you click a button, with up to 8 requests at once; when writing to disk, typically 30–50 MB per stream is held in memory.
 
 ## Privacy
 
