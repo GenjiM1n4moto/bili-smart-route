@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English** | [日本語](README.ja.md)
 
-**Smooth Bilibili playback outside mainland China — no more stalls on obscure videos or high-bitrate 4K.** A Tampermonkey / Violentmonkey userscript that measures, for each video file, whether the CDN edge has it cached. Cached files stay on Bilibili's native overseas edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead to make full use of the cross-border link.
+**Smooth Bilibili playback outside mainland China — no more stalls on obscure videos or high-bitrate 4K.** A Tampermonkey / Violentmonkey userscript that measures, for each video file, whether the CDN edge has it cached. Cached files stay on Bilibili's native overseas edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead to make full use of the cross-border link. The panel can also download a video: the picture only, the sound only, or both in one MP4.
 
 MIT License
 
@@ -69,9 +69,29 @@ Open any video and a translucent **⚡** label appears at the bottom left. The l
 - 🟢 **Native**: the overseas edge has it cached; direct.
 - 🟠 **Mainland**: switched to mainland mirrors; with several mirrors it shows e.g. `hw+ali`.
 
-Click it to open the panel: the current file's route and speed, this video's stalls, time to first frame and average seek wait, measured throughput of each mainland mirror, the switch log, and four buttons — **Pause script**, **Parallel mirrors: on/off**, **Reset mirror stats** and **Export log**. The label hides in fullscreen.
+Click it to open the panel: the current file's route and speed, this video's stalls, time to first frame and average seek wait, measured throughput of each mainland mirror, the switch log, four buttons — **Pause script**, **Parallel mirrors: on/off**, **Reset mirror stats** and **Export log** — and **Download** at the bottom (see the next section). The label hides in fullscreen.
 
 **4K tip:** in the player settings, set the preferred video codec to AV1 or HEVC. The same 4K video needs 17–30 Mbps in AVC but only 6–13 Mbps in AV1/HEVC.
+
+## Downloading video and audio
+
+**Download** is at the bottom of the panel. Once a video plays, it lists every picture quality and sound quality Bilibili gives your account for that video: AAC, plus Hi-Res lossless (FLAC) and Dolby Atmos where your account can play them. The streams you are playing are selected by default; the drop-downs change them and show each one's bitrate and estimated size. Three buttons:
+
+| Button | File you get |
+|---|---|
+| Video + audio | one `.mp4` with picture and sound together |
+| Video only | `.mp4` without sound |
+| Audio only | `.m4a` for AAC, `.flac` for Hi-Res, `.mp4` (E-AC-3) for Dolby |
+
+- **No re-encoding.** Picture and sound are taken from Bilibili's fragmented files as they are and re-wrapped into a plain MP4 (or a native FLAC), so quality is exactly what plays online; the file has a full index, so it seeks right away and opens in editing software.
+- **Fast.** It uses the same routing as playback: the file is fetched in 4 MB pieces from the native edges and the mainland mirrors at once (up to 8 connections), spread by measured speed; a piece that stalls, or crawls while another host is far faster, moves to another host, keeping what already arrived. Measured (Japan, signed out, 480P): a 92-minute, 409 MB video took 28–49 s.
+- **Large files do not fill memory.** Chrome / Edge show a **Save as** dialog and write to disk as the download goes, holding at most about 32 MB per stream in memory. Browsers that cannot write to disk directly, such as Firefox, keep the whole file in memory and save it at the end, so very large files may fail there.
+- A download can be cancelled; the ⚡ label shows its progress. On cancel or failure, the empty file the **Save as** dialog created is removed.
+- Chrome cannot play the Dolby (E-AC-3) track; use VLC, PotPlayer, mpv or similar. Some players do not support a FLAC track inside MP4 either; pick AAC then, or download the `.flac` on its own.
+
+**Only the qualities your account can already play are offered** (without a premium membership, for example, there is no 4K or Hi-Res); no membership or paywall is bypassed. DRM-protected videos (some anime and films) are refused outright, and the script decrypts nothing. Videos in the old segmented FLV format are not supported yet. Download links expire (usually after a few hours); if you see "links have expired", reload the page and try again.
+
+Please respect copyright: downloads are for personal viewing and backup only. Do not re-upload or redistribute them.
 
 ## FAQ
 
@@ -111,10 +131,11 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 - About 0.5–1.5 MB of extra probing when a large file starts, plus one 64 KB warm-up request to each of up to 3 mainland mirrors; on a native edge, an extra 256 KB probe roughly every half probe window of progress.
 - The mainland route reads up to 64 MB ahead, with up to 2 requests to each of up to 3 mirrors at once.
 - On the mainland route a tab typically uses about 30–100 MB of memory for fetched blocks (the read-ahead, plus 16 MB kept of what has been played), at most 192 MB.
+- Downloads run only when you click a button, with up to 8 requests at once; when writing to disk, at most about 32 MB per stream is held in memory.
 
 ## Privacy
 
-- Collects and uploads nothing; talks only to Bilibili's own CDN hosts.
+- Collects and uploads nothing; talks only to Bilibili's own CDN hosts. Downloaded files go only where you choose in the **Save as** dialog.
 - Mirror speed stats stay in your browser (`localStorage`, key `bax.stats.v2`).
 - The viewing history also stays in your browser (`bax.hist.v1`, about 256 KB, oldest entries dropped): one record per video with its BV id, quality, time to first frame, stall count and duration, seek waits, bytes per host and the switch log, for looking into stalls afterwards. **Export log** in the panel saves it, with the mirror stats, as a JSON file. **The exported file contains the BV ids of videos you watched**, so check it before sharing. To clear it, run `__BAX__.clearHistory()` in the console.
 - The diagnostic command `__BAX__.dump()` prints only host names and stats, never video ids or signed video URLs, so it is safe to paste into an issue.
@@ -125,6 +146,7 @@ localStorage.setItem('bax.cfg.v1', JSON.stringify({
 - Depends on the current web player loading segments via main-thread XHR; a Bilibili player update could break it (the safety net falls back to plain requests).
 - Bilibili only loads video while the tab is visible; stalls in background tabs are unrelated to this script.
 - The mainland mirror list is hard-coded and needs updating if a host goes away.
+- Downloading does not support the old segmented FLV format or DRM-protected videos.
 
 ## Reporting issues
 
