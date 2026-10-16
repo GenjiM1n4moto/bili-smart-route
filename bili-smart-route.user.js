@@ -10,17 +10,17 @@
 // @name:ja            Bilibili Smart Route
 // @name:ja-JP         Bilibili Smart Route
 // @namespace          bili-smart-route
-// @version            1.4.1
-// @description        海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
-// @description:zh-CN  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
-// @description:zh-TW  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
-// @description:zh-HK  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
-// @description:zh     海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。
-// @description:en     Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
-// @description:en-US  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
-// @description:en-GB  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead.
-// @description:ja     海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。
-// @description:ja-JP  海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。
+// @version            1.5.0
+// @description        海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。面板里还能下载视频和音频（只要画面、只要声音，或合成一个 MP4）。
+// @description:zh-CN  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。面板里还能下载视频和音频（只要画面、只要声音，或合成一个 MP4）。
+// @description:zh-TW  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。面板里还能下载视频和音频（只要画面、只要声音，或合成一个 MP4）。
+// @description:zh-HK  海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。面板里还能下载视频和音频（只要画面、只要声音，或合成一个 MP4）。
+// @description:zh     海外看 B 站冷门视频不再卡：按文件实测海外节点有没有缓存，有就直连；没有就改走大陆镜像，多镜像并行 + 预读，高码率 4K 也跑得动。面板里还能下载视频和音频（只要画面、只要声音，或合成一个 MP4）。
+// @description:en     Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead. The panel also downloads video and audio: picture only, sound only, or both in one MP4.
+// @description:en-US  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead. The panel also downloads video and audio: picture only, sound only, or both in one MP4.
+// @description:en-GB  Smoother Bilibili playback abroad: measures per file whether the overseas edge has it cached. Cached files stay on the native edge; cold ones switch to mainland mirrors, fetched from several mirrors in parallel with read-ahead. The panel also downloads video and audio: picture only, sound only, or both in one MP4.
+// @description:ja     海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。パネルから動画・音声のダウンロードも可能（映像のみ、音声のみ、または 1 つの MP4 に）。
+// @description:ja-JP  海外から見る Bilibili のマイナー動画・4K の再生停止を解消：ファイルごとに海外ノードのキャッシュを実測し、あればそのまま直結、なければ中国本土ミラーに切り替えて複数ミラー並列取得 + 先読みで再生します。パネルから動画・音声のダウンロードも可能（映像のみ、音声のみ、または 1 つの MP4 に）。
 // @author             bili-smart-route contributors
 // @license            MIT
 // @homepageURL        https://github.com/GenjiM1n4moto/bili-smart-route
@@ -42,7 +42,7 @@
   // turn one of them off in the userscript manager.
   try { W.__BILI_ACCELERATOR_INSTALLED__ = true; } catch (_) {}
 
-  const VERSION = '1.4.1';
+  const VERSION = '1.5.0';
   const CFG_KEY = 'bax.cfg.v1';
   const STATS_KEY = 'bax.stats.v2';
   const KB = 1024;
@@ -120,7 +120,18 @@
       stallInfo: mb => '块 @' + mb + 'MB 换源',
       whyFails: () => '一分钟内 3 次并行下载失败',
       whyMedia: code => '播放器报错 (MediaError ' + code + ')',
-      guardInfo: r => '本页停用多镜像：' + tr(r)
+      guardInfo: r => '本页停用多镜像：' + tr(r),
+      dl: '下载', dlV: '画面', dlA: '声音',
+      dlNeedPlay: '先播放视频，这里就会列出能下载的画质和音质（脚本需处于启用状态）。',
+      dlNoDash: '这个视频是旧式 FLV 分段格式，暂不支持下载。',
+      dlBoth: '视频+音频', dlVideoOnly: '只下视频', dlAudioOnly: '只下音频', dlCancel: '取消下载',
+      dlRun: (p, sp, eta) => '下载中 ' + p + '% · ' + sp + ' · 剩余 ' + eta,
+      dlDone: (name, size, dur) => '已保存：' + name + '（' + size + '，用时 ' + dur + '）',
+      dlCancelled: '已取消下载',
+      dlFail: w => '下载失败：' + w,
+      dlWhy: { drm: '这个视频有版权加密（DRM），不提供下载', expired: '下载链接已过期，请刷新页面后重试', net: '网络错误，所有节点都失败了', format: '无法识别的文件格式', bug: '脚本出错', http: '服务器拒绝了请求', stall: '下载卡住', slow: '速度太慢' },
+      dlNote: '只提供你的账号本来就能播放的画质和音质，仅供个人使用，请尊重版权。',
+      dlMem: '浏览器不支持直接写盘，文件先放在内存里'
     },
     en: {
       brand: 'Bilibili Smart Route', idle: 'Smart Route', paused: 'Paused',
@@ -136,7 +147,18 @@
       stallInfo: mb => 'block @' + mb + 'MB re-fetched elsewhere',
       whyFails: () => '3 parallel fetch failures within a minute',
       whyMedia: code => 'player error (MediaError ' + code + ')',
-      guardInfo: r => 'parallel mirrors off on this page: ' + tr(r)
+      guardInfo: r => 'parallel mirrors off on this page: ' + tr(r),
+      dl: 'Download', dlV: 'Video', dlA: 'Audio',
+      dlNeedPlay: 'Play the video first; the qualities you can download are listed here then (the script has to be enabled).',
+      dlNoDash: 'This video uses the old segmented FLV format, which cannot be downloaded yet.',
+      dlBoth: 'Video + audio', dlVideoOnly: 'Video only', dlAudioOnly: 'Audio only', dlCancel: 'Cancel download',
+      dlRun: (p, sp, eta) => 'Downloading ' + p + '% · ' + sp + ' · ' + eta + ' left',
+      dlDone: (name, size, dur) => 'Saved: ' + name + ' (' + size + ', took ' + dur + ')',
+      dlCancelled: 'Download cancelled',
+      dlFail: w => 'Download failed: ' + w,
+      dlWhy: { drm: 'this video is DRM-protected and is not offered for download', expired: 'the download links have expired; reload the page and try again', net: 'network error on every host', format: 'unrecognised file format', bug: 'script error', http: 'the server refused the request', stall: 'stalled', slow: 'too slow' },
+      dlNote: 'Only the qualities your account can already play are offered. For personal use only; please respect copyright.',
+      dlMem: 'this browser cannot write to disk directly, so the file is held in memory'
     },
     ja: {
       brand: 'Bilibili Smart Route', idle: 'スマートルート', paused: '一時停止中',
@@ -152,7 +174,18 @@
       stallInfo: mb => 'ブロック @' + mb + 'MB を別ミラーで再取得',
       whyFails: () => '1 分以内に並列取得が 3 回失敗',
       whyMedia: code => 'プレーヤーエラー (MediaError ' + code + ')',
-      guardInfo: r => 'このページでは複数ミラーを停止：' + tr(r)
+      guardInfo: r => 'このページでは複数ミラーを停止：' + tr(r),
+      dl: 'ダウンロード', dlV: '映像', dlA: '音声',
+      dlNeedPlay: '先に動画を再生すると、ダウンロードできる画質・音質がここに表示されます（スクリプトが有効なときのみ）。',
+      dlNoDash: 'この動画は旧式の分割 FLV 形式のため、まだダウンロードできません。',
+      dlBoth: '映像+音声', dlVideoOnly: '映像のみ', dlAudioOnly: '音声のみ', dlCancel: 'ダウンロードを中止',
+      dlRun: (p, sp, eta) => 'ダウンロード中 ' + p + '% · ' + sp + ' · 残り ' + eta,
+      dlDone: (name, size, dur) => '保存しました：' + name + '（' + size + '、所要 ' + dur + '）',
+      dlCancelled: 'ダウンロードを中止しました',
+      dlFail: w => 'ダウンロード失敗：' + w,
+      dlWhy: { drm: 'この動画は DRM で保護されているため、ダウンロードには対応しません', expired: 'ダウンロード用リンクの有効期限が切れました。ページを再読み込みしてやり直してください', net: 'すべてのノードでネットワークエラー', format: '認識できないファイル形式', bug: 'スクリプトのエラー', http: 'サーバーに拒否されました', stall: '停滞', slow: '遅すぎる' },
+      dlNote: 'あなたのアカウントで元々再生できる画質・音質だけを提供します。個人利用に限り、著作権を尊重してください。',
+      dlMem: 'このブラウザはディスクへ直接書き込めないため、ファイルはメモリ上に保持されます'
     }
   };
 
@@ -383,21 +416,40 @@
     fs.label = kind === 'audio'
       ? 'audio ' + (entry.id || '')
       : [h, codecName(entry.codecs || entry.codecid)].filter(Boolean).join(' ');
+    // For the download panel: what this stream is and where its index sits.
+    const sb = entry.SegmentBase || entry.segment_base || {};
+    const rng = s => { const r = /^(\d+)-(\d+)$/.exec(String(s || '')); return r ? [+r[1], +r[2]] : null; };
+    fs.meta = {
+      id: +entry.id || 0, codecs: String(entry.codecs || ''), height: +entry.height || 0,
+      fps: parseFloat(entry.frameRate || entry.frame_rate) || 0, bw: +entry.bandwidth || 0,
+      init: rng(sb.Initialization || sb.initialization), index: rng(sb.indexRange || sb.index_range)
+    };
+    return fs;
   }
 
+  // One playurl answer = the streams of one video. The download panel offers
+  // the group of whatever the player is playing.
+  let groupSeq = 0;
   function register(obj, depth) {
     depth = depth || 0;
     if (!obj || typeof obj !== 'object' || depth > 6) return;
     const dash = obj.dash;
     if (dash && typeof dash === 'object') {
-      (dash.video || []).forEach(e => regStream(e, 'video'));
-      (dash.audio || []).forEach(e => regStream(e, 'audio'));
-      if (dash.dolby && Array.isArray(dash.dolby.audio)) dash.dolby.audio.forEach(e => regStream(e, 'audio'));
-      if (dash.flac && dash.flac.audio) regStream(dash.flac.audio, 'audio');
+      const g = { id: ++groupSeq, duration: +dash.duration || 0, video: [], audio: [] };
+      const add = (list, e, kind) => {
+        const fs = regStream(e, kind);
+        if (fs && list.indexOf(fs) === -1) { list.push(fs); fs.group = g; }
+      };
+      (dash.video || []).forEach(e => add(g.video, e, 'video'));
+      (dash.audio || []).forEach(e => add(g.audio, e, 'audio'));
+      if (dash.dolby && Array.isArray(dash.dolby.audio)) dash.dolby.audio.forEach(e => add(g.audio, e, 'audio'));
+      if (dash.flac && dash.flac.audio) add(g.audio, dash.flac.audio, 'audio');
     }
     if (Array.isArray(obj.durl)) {
+      const g = { id: ++groupSeq, durl: true, video: [], audio: [] };
       obj.durl.forEach(function (e) {
-        regStream(e, 'video');
+        const f = regStream(e, 'video');
+        if (f) f.group = g;
         const u = e && typeof e.url === 'string' && toURL(e.url);
         const fs = u && files.get(u.pathname);
         if (fs && e.size > 0 && e.length > 0) fs.bw = e.size * 8 / (e.length / 1000);
@@ -1982,6 +2034,866 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 30000);
   }
 
+  // ---- download -------------------------------------------------------------
+  //
+  // Saves the streams of the video being played: picture only, sound only, or
+  // both in one MP4. Only the streams playurl already gave this account — the
+  // ones the player could play — are offered, and encrypted (DRM) streams are
+  // refused. B站 streams are fragmented MP4 (moof/mdat pairs); they are
+  // re-wrapped, never re-encoded, into a plain MP4 with full sample tables
+  // (moov at the end), which every player and editor opens and seeks. Hi-Res
+  // FLAC becomes a native .flac file.
+  //
+  // Fetching: 4 MB ranges, 8 at a time, spread over the native edges and the
+  // mainland mirrors by the speed each one shows for this file: 2 per host, up
+  // to 3 on the fastest one. A range that stalls, or crawls while another host
+  // is several times faster, is moved; what it already got is kept.
+
+  const DL_CHUNK = 4 * MB;
+  const DL_AHEAD = 6;      // chunks fetched ahead of the muxer, per stream
+  const DL_CONC = 8;
+  const DL_PER_HOST = 2;
+  const DL_PER_BEST = 3;   // the fastest measured host
+  const DL_STALL_MS = 10000;
+
+  const u32 = (b, o) => b[o] * 16777216 + (b[o + 1] << 16) + (b[o + 2] << 8) + b[o + 3];
+  const i32 = (b, o) => u32(b, o) | 0;
+  const u64 = (b, o) => u32(b, o) * 4294967296 + u32(b, o + 4);
+  const u24 = (b, o) => (b[o] << 16) + (b[o + 1] << 8) + b[o + 2];
+  function w32(b, o, v) { b[o] = (v >>> 24) & 255; b[o + 1] = (v >>> 16) & 255; b[o + 2] = (v >>> 8) & 255; b[o + 3] = v & 255; }
+  function w64(b, o, v) { w32(b, o, Math.floor(v / 4294967296)); w32(b, o + 4, v % 4294967296); }
+  const fourcc = (b, o) => String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
+
+  // Child boxes in b[start, end): { type, start, size, hdr }.
+  function boxesIn(b, start, end) {
+    const out = [];
+    let o = start;
+    while (o + 8 <= end) {
+      let size = u32(b, o);
+      let hdr = 8;
+      if (size === 1) { size = u64(b, o + 8); hdr = 16; } else if (size === 0) size = end - o;
+      if (size < hdr || o + size > end) break;
+      out.push({ type: fourcc(b, o + 4), start: o, size, hdr });
+      o += size;
+    }
+    return out;
+  }
+  const kidsOf = (b, box, skip) => boxesIn(b, box.start + box.hdr + (skip || 0), box.start + box.size);
+  const kid = (b, box, type, skip) => box && kidsOf(b, box, skip).find(x => x.type === type);
+  const rawOf = (b, box) => b.subarray(box.start, box.start + box.size);
+
+  function concatBytes(parts) {
+    const n = parts.reduce((a, p) => a + p.length, 0);
+    const out = new Uint8Array(n);
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
+  function mkBox(type, parts) {
+    const body = concatBytes(parts);
+    const out = new Uint8Array(8 + body.length);
+    w32(out, 0, out.length);
+    for (let i = 0; i < 4; i += 1) out[4 + i] = type.charCodeAt(i);
+    out.set(body, 8);
+    return out;
+  }
+  // FullBox with a body written by fill(view, offset) into `len` bytes.
+  function mkFull(type, version, flags, len, fill) {
+    const body = new Uint8Array(4 + len);
+    body[0] = version; body[1] = (flags >>> 16) & 255; body[2] = (flags >>> 8) & 255; body[3] = flags & 255;
+    if (fill) fill(body, 4);
+    return mkBox(type, [body]);
+  }
+
+  // ---- stream description from the init segment ----
+
+  function trackOf(moov) {
+    const top = boxesIn(moov, 0, moov.length)[0];
+    if (!top || top.type !== 'moov') throw { kind: 'format' };
+    const kids = kidsOf(moov, top);
+    if (kids.some(k => k.type === 'pssh')) throw { kind: 'drm' };
+    const mvhd = kids.find(k => k.type === 'mvhd');
+    const trak = kids.find(k => k.type === 'trak');
+    const mdia = kid(moov, trak, 'mdia');
+    const mdhd = kid(moov, mdia, 'mdhd');
+    const hdlr = kid(moov, mdia, 'hdlr');
+    const minf = kid(moov, mdia, 'minf');
+    const stbl = kid(moov, minf, 'stbl');
+    const stsd = kid(moov, stbl, 'stsd');
+    const tkhd = kid(moov, trak, 'tkhd');
+    if (!mvhd || !mdhd || !hdlr || !stsd || !tkhd) throw { kind: 'format' };
+    // Samples outside the fragments would be lost; B站 streams never have them.
+    const stsz = kid(moov, stbl, 'stsz');
+    if (stsz && u32(moov, stsz.start + 16) > 0) throw { kind: 'format' };
+    const entry = boxesIn(moov, stsd.start + stsd.hdr + 8, stsd.start + stsd.size)[0];
+    if (!entry) throw { kind: 'format' };
+    if (/^enc[av]$/.test(entry.type)) throw { kind: 'drm' };
+    const mv = moov[mvhd.start + 8];
+    const md = moov[mdhd.start + 8];
+    const mdBody = mdhd.start + mdhd.hdr + 4;
+    const trexBox = kid(moov, kids.find(k => k.type === 'mvex'), 'trex');
+    const trex = trexBox ? { dur: u32(moov, trexBox.start + 20), size: u32(moov, trexBox.start + 24), flags: u32(moov, trexBox.start + 28) }
+      : { dur: 0, size: 0, flags: 0 };
+    const elst = kid(moov, kid(moov, trak, 'edts'), 'elst');
+    let edits = null;
+    if (elst) {
+      const v = moov[elst.start + 8];
+      const n = u32(moov, elst.start + 12);
+      edits = [];
+      for (let i = 0, o = elst.start + 16; i < n; i += 1) {
+        if (v === 1) { edits.push([u64(moov, o), u64(moov, o + 8) > 9e15 ? -1 : u64(moov, o + 8)]); o += 20; }
+        else { edits.push([u32(moov, o), i32(moov, o + 4)]); o += 12; }
+      }
+    }
+    return {
+      movieTs: u32(moov, mvhd.start + (mv === 1 ? 28 : 20)),
+      ts: u32(moov, mdBody + (md === 1 ? 16 : 8)),
+      lang: (moov[mdBody + (md === 1 ? 28 : 16)] << 8) | moov[mdBody + (md === 1 ? 29 : 17)],
+      video: fourcc(moov, hdlr.start + hdlr.hdr + 8) === 'vide',
+      wh: moov.slice(tkhd.start + tkhd.size - 8, tkhd.start + tkhd.size),
+      hdlr: rawOf(moov, hdlr).slice(),
+      minfKeep: kidsOf(moov, minf).filter(k => k.type !== 'stbl').map(k => rawOf(moov, k).slice()),
+      stsd: rawOf(moov, stsd).slice(),
+      codec: entry.type,
+      flacMeta: entry.type === 'fLaC' ? flacMetaOf(moov, entry) : null,
+      trex, edits
+    };
+  }
+
+  // dfLa holds the FLAC metadata blocks verbatim.
+  function flacMetaOf(b, entry) {
+    const dfla = kid(b, entry, 'dfLa', 28);
+    if (!dfla) throw { kind: 'format' };
+    const blocks = b.slice(dfla.start + dfla.hdr + 4, dfla.start + dfla.size);
+    for (let o = 0; o + 4 <= blocks.length;) {
+      const len = u24(blocks, o + 1);
+      const last = o + 4 + len >= blocks.length;
+      blocks[o] = (blocks[o] & 0x7f) | (last ? 0x80 : 0);
+      o += 4 + len;
+    }
+    return blocks;
+  }
+
+  // One moof + its mdat -> sample runs with their bytes.
+  function samplesOf(T, frag) {
+    const b = frag.moof;
+    const top = boxesIn(b, 0, b.length)[0];
+    const runs = [];
+    let time = null;
+    for (const traf of kidsOf(b, top).filter(k => k.type === 'traf')) {
+      const tfhd = kid(b, traf, 'tfhd');
+      const tfdt = kid(b, traf, 'tfdt');
+      if (!tfhd) throw { kind: 'format' };
+      const tf = u24(b, tfhd.start + 9);
+      let p = tfhd.start + 16;
+      let base = frag.moofAt;
+      if (tf & 1) { base = u64(b, p); p += 8; }
+      if (tf & 2) p += 4;
+      let dDur = T.trex.dur, dSize = T.trex.size, dFlags = T.trex.flags;
+      if (tf & 8) { dDur = u32(b, p); p += 4; }
+      if (tf & 0x10) { dSize = u32(b, p); p += 4; }
+      if (tf & 0x20) { dFlags = u32(b, p); p += 4; }
+      if (tfdt && time == null) time = b[tfdt.start + 8] === 1 ? u64(b, tfdt.start + 12) : u32(b, tfdt.start + 12);
+      let next = frag.mdatAt + frag.mdatHdr;
+      for (const trun of kidsOf(b, traf).filter(k => k.type === 'trun')) {
+        const ver = b[trun.start + 8];
+        const rf = u24(b, trun.start + 9);
+        const n = u32(b, trun.start + 12);
+        let q = trun.start + 16;
+        let at = next;
+        if (rf & 1) { at = base + i32(b, q); q += 4; }
+        let first = null;
+        if (rf & 4) { first = u32(b, q); q += 4; }
+        const run = { at, sizes: [], durs: [], sync: [], ctos: [], bytes: 0 };
+        for (let i = 0; i < n; i += 1) {
+          const dur = rf & 0x100 ? u32(b, q) : dDur; if (rf & 0x100) q += 4;
+          const size = rf & 0x200 ? u32(b, q) : dSize; if (rf & 0x200) q += 4;
+          const fl = rf & 0x400 ? u32(b, q) : i === 0 && first != null ? first : dFlags; if (rf & 0x400) q += 4;
+          const cto = rf & 0x800 ? (ver ? i32(b, q) : u32(b, q)) : 0; if (rf & 0x800) q += 4;
+          run.durs.push(dur); run.sizes.push(size); run.sync.push(!((fl >>> 16) & 1)); run.ctos.push(cto);
+          run.bytes += size;
+        }
+        const off = at - frag.mdatAt;
+        if (off < frag.mdatHdr || off + run.bytes > frag.mdat.length) throw { kind: 'format' };
+        run.data = frag.mdat.subarray(off, off + run.bytes);
+        next = at + run.bytes;
+        runs.push(run);
+      }
+    }
+    return { time, runs };
+  }
+
+  // ---- sample tables -> moov ----
+
+  function newTable(T, id) {
+    return Object.assign(T, { id, sizes: [], stts: [], ctts: [], stss: [], allSync: true, stsc: [], co: [], n: 0, dur: 0, negCto: false });
+  }
+  function addRun(T, run, offset) {
+    T.co.push(offset);
+    const chunk = T.co.length;
+    const lastC = T.stsc[T.stsc.length - 1];
+    if (!lastC || lastC[1] !== run.sizes.length) T.stsc.push([chunk, run.sizes.length]);
+    for (let i = 0; i < run.sizes.length; i += 1) {
+      T.n += 1;
+      T.sizes.push(run.sizes[i]);
+      const d = run.durs[i];
+      T.dur += d;
+      const st = T.stts[T.stts.length - 1];
+      if (st && st[1] === d) st[0] += 1; else T.stts.push([1, d]);
+      const c = run.ctos[i];
+      if (c < 0) T.negCto = true;
+      const ct = T.ctts[T.ctts.length - 1];
+      if (ct && ct[1] === c) ct[0] += 1; else T.ctts.push([1, c]);
+      if (run.sync[i]) T.stss.push(T.n); else T.allSync = false;
+    }
+  }
+  function tableBoxes(T) {
+    const pairs = (type, list, ver) => mkFull(type, ver || 0, 0, 4 + list.length * 8, function (b, o) {
+      w32(b, o, list.length);
+      list.forEach((e, i) => { w32(b, o + 4 + i * 8, e[0]); w32(b, o + 8 + i * 8, e[1] >>> 0); });
+    });
+    const out = [T.stsd, pairs('stts', T.stts)];
+    if (T.ctts.some(e => e[1] !== 0)) out.push(pairs('ctts', T.ctts, T.negCto ? 1 : 0));
+    if (!T.allSync) {
+      out.push(mkFull('stss', 0, 0, 4 + T.stss.length * 4, function (b, o) {
+        w32(b, o, T.stss.length);
+        T.stss.forEach((s, i) => w32(b, o + 4 + i * 4, s));
+      }));
+    }
+    out.push(mkFull('stsc', 0, 0, 4 + T.stsc.length * 12, function (b, o) {
+      w32(b, o, T.stsc.length);
+      T.stsc.forEach((e, i) => { w32(b, o + 4 + i * 12, e[0]); w32(b, o + 8 + i * 12, e[1]); w32(b, o + 12 + i * 12, 1); });
+    }));
+    out.push(mkFull('stsz', 0, 0, 8 + T.sizes.length * 4, function (b, o) {
+      w32(b, o, 0); w32(b, o + 4, T.sizes.length);
+      T.sizes.forEach((s, i) => w32(b, o + 8 + i * 4, s));
+    }));
+    const big = T.co.some(c => c > 0xffffffff);
+    out.push(mkFull(big ? 'co64' : 'stco', 0, 0, 4 + T.co.length * (big ? 8 : 4), function (b, o) {
+      w32(b, o, T.co.length);
+      T.co.forEach((c, i) => big ? w64(b, o + 4 + i * 8, c) : w32(b, o + 4 + i * 4, c));
+    }));
+    return out;
+  }
+  const MOVIE_TS = 1000;
+  const MATRIX = [0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000];
+  function trakBox(T) {
+    const ms = Math.round(T.dur * MOVIE_TS / T.ts);
+    // v1 body: times 16, track_ID, reserved, duration 8, reserved 8, layer,
+    // group, volume, reserved, matrix 36, width, height = 92 bytes.
+    const tkhd = mkFull('tkhd', 1, 3, 92, function (b, o) {
+      w32(b, o + 16, T.id); w64(b, o + 24, ms);
+      if (!T.video) b[o + 44] = 1; // volume 1.0
+      MATRIX.forEach((m, i) => w32(b, o + 48 + i * 4, m));
+      b.set(T.wh, o + 84);
+    });
+    const parts = [tkhd];
+    if (T.edits && T.edits.length) {
+      const list = T.edits.map(e => [e[0] ? Math.round(e[0] * MOVIE_TS / T.movieTs) : Math.max(0, ms - (e[1] > 0 ? Math.round(e[1] * MOVIE_TS / T.ts) : 0)), e[1]]);
+      parts.push(mkBox('edts', [mkFull('elst', 1, 0, 4 + list.length * 20, function (b, o) {
+        w32(b, o, list.length);
+        list.forEach((e, i) => {
+          w64(b, o + 4 + i * 20, e[0]);
+          if (e[1] < 0) { w32(b, o + 12 + i * 20, 0xffffffff); w32(b, o + 16 + i * 20, 0xffffffff); } else w64(b, o + 12 + i * 20, e[1]);
+          w32(b, o + 20 + i * 20, 0x10000);
+        });
+      })]));
+    }
+    const mdhd = mkFull('mdhd', 1, 0, 32, function (b, o) {
+      w32(b, o + 16, T.ts); w64(b, o + 20, T.dur); b[o + 28] = T.lang >> 8; b[o + 29] = T.lang & 255;
+    });
+    const minf = mkBox('minf', T.minfKeep.concat([mkBox('stbl', tableBoxes(T))]));
+    parts.push(mkBox('mdia', [mdhd, T.hdlr, minf]));
+    return mkBox('trak', parts);
+  }
+  function moovBox(tracks) {
+    const ms = Math.max.apply(null, tracks.map(T => Math.round(T.dur * MOVIE_TS / T.ts)));
+    const mvhd = mkFull('mvhd', 1, 0, 108, function (b, o) {
+      w32(b, o + 16, MOVIE_TS); w64(b, o + 20, ms); w32(b, o + 28, 0x10000); b[o + 32] = 1;
+      MATRIX.forEach((m, i) => w32(b, o + 44 + i * 4, m));
+      w32(b, o + 104, tracks.length + 1);
+    });
+    return mkBox('moov', [mvhd].concat(tracks.map(trakBox)));
+  }
+
+  // ---- fetching: one host table per stream, ranges spread by measured speed ----
+
+  function dlFile(fs) {
+    const first = toURL(fs.native.values().next().value);
+    const hosts = [];
+    const add = function (h, prior) {
+      if (!h || hosts.some(x => x.host === h)) return;
+      const url = urlForHost(fs, h, first);
+      if (url) hosts.push({ host: h, url, prior, rate: null, inflight: 0, until: 0, fails: 0, dead: null, bytes: 0 });
+    };
+    const warm = h => fs.verified.has(h) || (fs.route && fs.route.cls === 'native' && fs.route.host === h);
+    fs.order.forEach(h => add(h, isFailed(fs, h) ? 2 : warm(h) ? 60 : 15));
+    cfg.mainland.forEach(h => add(h, hostScore(h)));
+    return { fs, hosts, size: 0, total: 0 };
+  }
+
+  function dlBest(f, except) {
+    let best = 0;
+    for (const h of f.hosts) if (h !== except && !h.dead && h.rate != null && h.rate > best) best = h.rate;
+    return best;
+  }
+  // Fastest host with a free slot; untested hosts go by their prior, and a
+  // host measured below a quarter of the best one is left alone.
+  function dlPick(f) {
+    const best = dlBest(f);
+    let pick = null;
+    let score = -1;
+    for (const h of f.hosts) {
+      if (h.dead || h.until > now() || h.inflight >= (best && h.rate === best ? DL_PER_BEST : DL_PER_HOST)) continue;
+      if (best && h.rate != null && h.rate < best * 0.25) continue;
+      const s = h.rate != null ? h.rate : h.prior;
+      if (s > score) { score = s; pick = h; }
+    }
+    return pick;
+  }
+  // An HTTP answer other than 206 rules the host out for this file. Anything
+  // else (a dropped connection, a stall, a crawl) only rests it for a while.
+  function dlFail(f, h, e) {
+    if (e.kind === 'http' || e.kind === 'format') { h.dead = e.status || e.kind; return; }
+    h.fails += 1;
+    h.until = now() + (e.kind === 'slow' ? 30000 : Math.min(60000, 3000 * h.fails));
+  }
+  // Every host gone: signatures rejected everywhere means the URLs expired.
+  function dlDead(f) {
+    if (!f.hosts.every(h => h.dead)) return null;
+    return f.hosts.some(h => h.dead === 403 || h.dead === 410) ? 'expired' : 'net';
+  }
+
+  function dlTick(job, n) {
+    const s = Math.floor(Date.now() / 1000);
+    if (job.sec !== s) {
+      if (job.sec) job.hist.push(job.secBytes);
+      if (job.hist.length > 4) job.hist.shift();
+      job.sec = s;
+      job.secBytes = 0;
+    }
+    job.secBytes += n;
+  }
+
+  const liveRate = (x, t) => t - x.t0 > 2000 ? x.got * 8 / (t - x.t0) / 1000 : null;
+
+  // One range request for what chunk c still lacks. Bytes land in c.buf as
+  // they arrive, so a request that is given up on keeps what it got and only
+  // the rest is asked for again.
+  async function dlFetch(job, f, h, c) {
+    const start = c.start + c.got;
+    const ac = new AbortController();
+    const stop = () => ac.abort();
+    job.ac.signal.addEventListener('abort', stop);
+    const live = { h, t0: now(), got: 0 };
+    job.live.add(live);
+    let last = live.t0;
+    let why = null;
+    const timer = setInterval(function () {
+      const t = now();
+      if (t - last > DL_STALL_MS) { why = 'stall'; ac.abort(); return; }
+      // Crawling while a request on another host is several times faster right
+      // now. Compared live, so a full line that slows every request alike cuts
+      // none; with nothing else running (the last pieces, or the one the muxer
+      // waits on), against what the other hosts measured before.
+      const mine = liveRate(live, t);
+      if (t - live.t0 < 5000 || mine == null) return;
+      let top = 0;
+      job.live.forEach(function (x) {
+        const r = x.h !== h && liveRate(x, t);
+        if (r && r > top) top = r;
+      });
+      if (!top) top = dlBest(f, h);
+      if (top && mine < top * 0.25) { why = 'slow'; h.rate = mine; ac.abort(); }
+    }, 1000);
+    h.inflight += 1;
+    try {
+      const res = await nativeFetch.call(W, h.url, {
+        headers: { Range: 'bytes=' + start + '-' + c.end }, mode: 'cors', credentials: 'omit', cache: 'no-store', signal: ac.signal
+      });
+      if (res.status !== 206 || !res.body) { ac.abort(); throw { kind: 'http', status: res.status }; }
+      const cr = /(\d+)-(\d+)\/(\d+)\s*$/.exec(res.headers.get('content-range') || '');
+      if (cr) {
+        f.total = +cr[3];
+        // a range reaching past the end comes back cut at the end
+        if (!c.buf && +cr[1] === start && +cr[2] < c.end) c.end = +cr[2];
+      }
+      if (!c.buf) c.buf = new Uint8Array(c.end - c.start + 1);
+      const rd = res.body.getReader();
+      for (;;) {
+        const step = await rd.read();
+        if (step.done) break;
+        const v = step.value;
+        if (c.got + v.length > c.buf.length) throw { kind: 'format' };
+        c.buf.set(v, c.got);
+        c.got += v.length;
+        live.got += v.length;
+        last = now();
+        dlTick(job, v.length);
+      }
+      if (c.got !== c.buf.length) throw { kind: 'net' };
+      if (live.got >= MB) {
+        const r = live.got * 8 / Math.max(now() - live.t0, 1) / 1000;
+        h.rate = h.rate == null ? r : h.rate * 0.6 + r * 0.4;
+      }
+      h.fails = 0;
+      return c.buf;
+    } catch (e) {
+      if (job.error) throw job.error;
+      throw why ? { kind: why } : e && e.kind ? e : { kind: 'net' };
+    } finally {
+      clearInterval(timer);
+      h.inflight -= 1;
+      h.bytes += live.got;
+      job.live.delete(live);
+      job.ac.signal.removeEventListener('abort', stop);
+    }
+  }
+
+  // A single small range, trying hosts in turn (index and size lookup).
+  async function dlFetchAny(job, f, a, b) {
+    const c = { start: a, end: b, got: 0, buf: null };
+    for (let tries = 0; tries < 16; tries += 1) {
+      if (job.error) throw job.error;
+      const h = dlPick(f);
+      if (!h) { await new Promise(r => setTimeout(r, 1000)); continue; }
+      try {
+        return await dlFetch(job, f, h, c);
+      } catch (e) {
+        if (job.error) throw job.error;
+        dlFail(f, h, e);
+        const dead = dlDead(f);
+        if (dead) throw { kind: dead };
+      }
+    }
+    throw { kind: 'net' };
+  }
+
+  // File size from the sidx (the data ends where its last reference ends),
+  // else from Content-Range.
+  async function dlSize(job, f) {
+    const m = f.fs.meta || {};
+    const head = await dlFetchAny(job, f, 0, m.index ? m.index[1] : 65535);
+    for (const box of boxesIn(head, 0, head.length)) {
+      if (box.type !== 'sidx') continue;
+      const v = head[box.start + 8];
+      const first = v === 1 ? u64(head, box.start + 28) : u32(head, box.start + 24);
+      let o = box.start + (v === 1 ? 36 : 28);
+      const n = (head[o + 2] << 8) | head[o + 3];
+      o += 4;
+      let sum = 0;
+      for (let i = 0; i < n; i += 1, o += 12) sum += u32(head, o) & 0x7fffffff;
+      return box.start + box.size + first + sum;
+    }
+    if (f.total) return f.total;
+    throw { kind: 'format' };
+  }
+
+  function dlPump(job) {
+    while (!job.error && job.active < DL_CONC && job.queue.length) {
+      let i = job.queue.findIndex(t => t.c.urgent && dlPick(t.f));
+      if (i < 0) i = job.queue.findIndex(t => dlPick(t.f));
+      if (i < 0) {
+        if (!job.wake) job.wake = setTimeout(function () { job.wake = 0; dlPump(job); }, 1000);
+        return;
+      }
+      const t = job.queue.splice(i, 1)[0];
+      dlRun(job, t, dlPick(t.f));
+    }
+  }
+  function dlRun(job, t, h) {
+    job.active += 1;
+    const had = t.c.got;
+    dlFetch(job, t.f, h, t.c).then(function (buf) {
+      t.c.done = true;
+      t.c.waiters.splice(0).forEach(w => w[0](buf));
+    }, function (e) {
+      if (job.error) return;
+      dlFail(t.f, h, e);
+      const dead = dlDead(t.f);
+      t.c.tries = t.c.got > had ? 0 : (t.c.tries || 0) + 1; // only tries that got nothing count
+      if (dead || t.c.tries > 12) { dlAbort(job, { kind: dead || 'net' }); return; }
+      job.queue.unshift(t);
+    }).then(function () {
+      job.active -= 1;
+      dlPump(job);
+    });
+  }
+
+  // Sequential reader over one stream: fetches DL_CHUNK pieces ahead of the
+  // position being read and forgets the ones behind it.
+  function dlReader(job, f) {
+    const chunks = new Map();
+    const n = Math.ceil(f.size / DL_CHUNK);
+    function want(i, urgent) {
+      if (i >= n) return;
+      let c = chunks.get(i);
+      if (!c) {
+        c = { start: i * DL_CHUNK, end: Math.min(f.size, (i + 1) * DL_CHUNK) - 1, buf: null, got: 0, done: false, waiters: [], urgent: false };
+        chunks.set(i, c);
+        job.queue.push({ f, c });
+      }
+      if (urgent) c.urgent = true;
+    }
+    const r = {
+      chunks, size: f.size, pos: 0, pending: null,
+      read: async function (a, b) { // bytes [a, b)
+        if (job.error) throw job.error;
+        const i0 = Math.floor(a / DL_CHUNK);
+        const i1 = Math.floor((b - 1) / DL_CHUNK);
+        for (const k of Array.from(chunks.keys())) if (k < i0) chunks.delete(k);
+        for (let i = i0; i <= i1 + DL_AHEAD; i += 1) want(i, i <= i1);
+        dlPump(job);
+        const parts = [];
+        for (let i = i0; i <= i1; i += 1) {
+          const c = chunks.get(i);
+          parts.push(c.done ? c.buf : await new Promise((res, rej) => c.waiters.push([res, rej])));
+        }
+        if (i0 === i1) return parts[0].subarray(a - i0 * DL_CHUNK, b - i0 * DL_CHUNK);
+        const out = new Uint8Array(b - a);
+        let o = 0;
+        parts.forEach(function (p, k) {
+          const base = (i0 + k) * DL_CHUNK;
+          const s = Math.max(a, base) - base;
+          const e = Math.min(b, base + p.length) - base;
+          out.set(p.subarray(s, e), o);
+          o += e - s;
+        });
+        return out;
+      }
+    };
+    job.readers.push(r);
+    return r;
+  }
+
+  async function nextBox(r) {
+    if (r.pos + 8 > r.size) return null;
+    const h = await r.read(r.pos, Math.min(r.pos + 16, r.size));
+    let size = u32(h, 0);
+    let hdr = 8;
+    if (size === 1) { size = u64(h, 8); hdr = 16; } else if (size === 0) size = r.size - r.pos;
+    if (size < hdr || r.pos + size > r.size) throw { kind: 'format' };
+    const at = r.pos;
+    const type = fourcc(h, 4);
+    const data = await r.read(at, at + size);
+    r.pos = at + size;
+    return { type, data, at, hdr };
+  }
+  // Everything up to the first moof: the moov describes the stream.
+  async function dlInit(r) {
+    let moov = null;
+    for (;;) {
+      const b = await nextBox(r);
+      if (!b) throw { kind: 'format' };
+      if (b.type === 'moov') moov = b.data.slice();
+      else if (b.type === 'moof') { r.pending = b; break; }
+    }
+    if (!moov) throw { kind: 'format' };
+    return trackOf(moov);
+  }
+  async function nextFrag(r) {
+    let moof = r.pending || await nextBox(r);
+    r.pending = null;
+    while (moof && moof.type !== 'moof') moof = await nextBox(r);
+    if (!moof) return null;
+    let mdat = await nextBox(r);
+    while (mdat && mdat.type !== 'mdat') mdat = await nextBox(r);
+    if (!mdat) throw { kind: 'format' };
+    return { moof: moof.data, moofAt: moof.at, mdat: mdat.data, mdatAt: mdat.at, mdatHdr: mdat.hdr };
+  }
+
+  const ascii = s => Uint8Array.from(s, ch => ch.charCodeAt(0));
+
+  // Fragments of all streams in time order -> one mdat; tables -> moov at the end.
+  async function dlMux(job, files, sink) {
+    const srcs = files.map(f => dlReader(job, f));
+    const tracks = [];
+    for (let i = 0; i < srcs.length; i += 1) tracks.push(newTable(await dlInit(srcs[i]), i + 1));
+    const brands = ['isom', 'iso2', 'mp41'].concat(tracks.some(T => T.codec === 'av01') ? ['av01'] : []);
+    const minor = new Uint8Array(4);
+    w32(minor, 0, 0x200);
+    await sink.write(mkBox('ftyp', [ascii('isom'), minor].concat(brands.map(ascii))));
+    const mdatAt = sink.pos;
+    await sink.write(new Uint8Array(16)); // 64-bit mdat header, filled in at the end
+    async function fragOf(i) {
+      const fr = await nextFrag(srcs[i]);
+      if (!fr) return null;
+      const s = samplesOf(tracks[i], fr);
+      s.t = (s.time != null ? s.time : tracks[i].dur) / tracks[i].ts;
+      return s;
+    }
+    const cur = [];
+    for (let i = 0; i < srcs.length; i += 1) cur.push(await fragOf(i));
+    for (;;) {
+      let k = -1;
+      cur.forEach((s, i) => { if (s && (k < 0 || s.t < cur[k].t)) k = i; });
+      if (k < 0) break;
+      for (const run of cur[k].runs) {
+        addRun(tracks[k], run, sink.pos);
+        await sink.write(run.data);
+      }
+      job.done = srcs.reduce((a, r) => a + r.pos, 0);
+      cur[k] = await fragOf(k);
+    }
+    if (!tracks.every(T => T.n)) throw { kind: 'format' };
+    const hdr = new Uint8Array(16);
+    w32(hdr, 0, 1);
+    hdr.set(ascii('mdat'), 4);
+    w64(hdr, 8, sink.pos - mdatAt);
+    await sink.write(moovBox(tracks));
+    await sink.patch(mdatAt, hdr);
+  }
+
+  // fLaC in MP4 -> native FLAC: the metadata blocks, then the frames as they are.
+  async function dlFlac(job, f, sink) {
+    const r = dlReader(job, f);
+    const T = await dlInit(r);
+    await sink.write(concatBytes([ascii('fLaC'), T.flacMeta]));
+    let samples = 0;
+    for (;;) {
+      const fr = await nextFrag(r);
+      if (!fr) break;
+      for (const run of samplesOf(T, fr).runs) {
+        await sink.write(run.data);
+        samples += run.durs.reduce((a, d) => a + d, 0);
+      }
+      job.done = r.pos;
+    }
+    // STREAMINFO total samples (36 bits) when the first block is STREAMINFO.
+    if ((T.flacMeta[0] & 0x7f) === 0 && samples) {
+      const p = new Uint8Array(5);
+      p[0] = (T.flacMeta[17] & 0xf0) | (Math.floor(samples / 4294967296) & 0x0f);
+      w32(p, 1, samples % 4294967296);
+      await sink.patch(21, p);
+    }
+  }
+
+  // ---- output: a file chosen with the save dialog, else a Blob download ----
+
+  async function dlSink(name, mime, ext) {
+    if (typeof W.showSaveFilePicker === 'function') {
+      let handle = null;
+      try {
+        handle = await W.showSaveFilePicker({ suggestedName: name, types: [{ description: ext.toUpperCase(), accept: { [mime]: ['.' + ext] } }] });
+      } catch (e) {
+        if (e && e.name === 'AbortError') return null; // closed the dialog
+      }
+      if (handle) return fileSink(handle);
+    }
+    return blobSink(name, mime);
+  }
+
+  // Writes go out in 8 MB pieces (to a swap file the browser swaps in on close).
+  async function fileSink(handle) {
+    const w = await handle.createWritable();
+    let parts = [];
+    let held = 0;
+    const flush = async function () {
+      if (!held) return;
+      const data = concatBytes(parts);
+      parts = [];
+      held = 0;
+      await w.write(data);
+    };
+    const s = {
+      pos: 0, name: handle.name, file: true,
+      write: async function (u8) { parts.push(u8); held += u8.length; s.pos += u8.length; if (held >= 8 * MB) await flush(); },
+      patch: async function (pos, data) { await flush(); await w.write({ type: 'write', position: pos, data }); },
+      finish: async function () { await flush(); await w.close(); },
+      abort: async function () {
+        parts = [];
+        try { await w.abort(); } catch (_) {}
+        // The dialog leaves an empty file behind; nothing was in it.
+        try { if (handle.remove && (await handle.getFile()).size === 0) await handle.remove(); } catch (_) {}
+      }
+    };
+    return s;
+  }
+
+  function blobSink(name, mime) {
+    const parts = [];
+    const s = {
+      pos: 0, name, file: false,
+      write: async function (u8) { parts.push(u8.slice()); s.pos += u8.length; },
+      patch: async function (pos, data) {
+        let o = 0;
+        for (const p of parts) {
+          const e = o + p.length;
+          for (let i = Math.max(pos, o); i < Math.min(e, pos + data.length); i += 1) p[i - o] = data[i - pos];
+          o = e;
+        }
+      },
+      finish: async function () {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(parts, { type: mime }));
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        parts.length = 0;
+        setTimeout(() => URL.revokeObjectURL(a.href), 120000);
+      },
+      abort: async function () { parts.length = 0; }
+    };
+    return s;
+  }
+
+  // ---- jobs ----
+
+  let dlJob = null;
+  const dlSel = { v: null, a: null };
+  const QN = { 127: '8K', 126: 'Dolby Vision', 125: 'HDR', 120: '4K', 116: '1080P60', 112: '1080P+', 100: 'AI', 80: '1080P', 74: '720P60', 64: '720P', 32: '480P', 16: '360P', 6: '240P' };
+
+  function dlGroup() {
+    const f = current.video || current.audio;
+    return f && f.group;
+  }
+  function dlLists(g) {
+    return {
+      video: g.video.filter(f => f.meta).sort((a, b) => (b.meta.id - a.meta.id) || (b.meta.bw - a.meta.bw)),
+      audio: g.audio.filter(f => f.meta).sort((a, b) => b.meta.bw - a.meta.bw)
+    };
+  }
+  function dlName(fs) {
+    const m = fs.meta;
+    if (fs.kind === 'audio') {
+      const c = /^flac/i.test(m.codecs) ? 'Hi-Res FLAC' : /^(ec-3|ac-3)/i.test(m.codecs) ? 'Dolby' : 'AAC';
+      return c + ' ' + Math.round(m.bw / 1000) + 'K';
+    }
+    return (QN[m.id] || (m.height ? m.height + 'P' : '?')) + ' ' + codecName(m.codecs);
+  }
+  function fmtBytes(b) {
+    return b >= 1e9 ? (b / 1073741824).toFixed(2) + ' GB' : (b / 1048576).toFixed(b >= 1e8 ? 0 : 1) + ' MB';
+  }
+  function fmtDur(s) {
+    s = Math.round(s);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor(s / 60) % 60;
+    const ss = String(s % 60).padStart(2, '0');
+    return h ? h + ':' + String(m).padStart(2, '0') + ':' + ss : m + ':' + ss;
+  }
+  function dlTitle() {
+    let t = String(document.title || '')
+      .replace(/_哔哩哔哩_bilibili\s*$/i, '')
+      .replace(/-(番剧|电影|纪录片|国创|电视剧|综艺)-.*bilibili-哔哩哔哩\s*$/i, '').trim();
+    const p = /[?&]p=(\d+)/.exec(location.search);
+    if (p && p[1] !== '1') t += ' P' + p[1];
+    return (t || pageId() || 'bilibili').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').slice(0, 120).trim();
+  }
+
+  function dlAbort(job, err) {
+    if (job.error) return;
+    job.error = err;
+    try { job.ac.abort(); } catch (_) {}
+    clearTimeout(job.wake);
+    job.queue.length = 0;
+    job.readers.forEach(r => r.chunks.forEach(c => c.waiters.splice(0).forEach(w => w[1](err))));
+  }
+
+  // mode: 'av' picture + sound in one MP4, 'v' picture only, 'a' sound only.
+  async function dlStart(mode, opts) {
+    opts = opts || {};
+    if (dlJob && dlJob.state === 'run') return;
+    const g = dlGroup();
+    if (!g || g.durl) return;
+    const lists = dlLists(g);
+    const pick = (list, path) => list.find(f => f.path === path) || list[0];
+    const vfs = mode !== 'a' ? pick(lists.video, opts.v || dlSel.v || (current.video && current.video.path)) : null;
+    const afs = mode !== 'v' ? pick(lists.audio, opts.a || dlSel.a || (current.audio && current.audio.path)) : null;
+    if ((mode !== 'a' && !vfs) || (mode !== 'v' && !afs)) return;
+    const flac = mode === 'a' && /^flac/i.test(afs.meta.codecs);
+    const ext = flac ? 'flac' : mode === 'a' ? (/^(ec-3|ac-3)/i.test(afs.meta.codecs) ? 'mp4' : 'm4a') : 'mp4';
+    const mime = flac ? 'audio/flac' : mode === 'a' ? 'audio/mp4' : 'video/mp4';
+    const name = dlTitle() + ' [' + [vfs && dlName(vfs), afs && dlName(afs)].filter(Boolean).join(' + ') + '].' + ext;
+    // The save dialog needs the click's user activation: nothing awaited before it.
+    const sink = opts.sink || await dlSink(name, mime, ext);
+    if (!sink) return;
+    const job = dlJob = {
+      state: 'run', mode, sink, ac: new AbortController(), queue: [], active: 0, readers: [], files: [], live: new Set(),
+      done: 0, total: 0, hist: [], sec: 0, secBytes: 0, error: null, wake: 0, t0: now()
+    };
+    render();
+    try {
+      job.files = [vfs, afs].filter(Boolean).map(dlFile);
+      for (const f of job.files) f.size = await dlSize(job, f);
+      job.total = job.files.reduce((a, f) => a + f.size, 0);
+      if (flac) await dlFlac(job, job.files[0], sink);
+      else await dlMux(job, job.files, sink);
+      await sink.finish();
+      job.state = 'done';
+      job.done = job.total;
+      job.secs = (now() - job.t0) / 1000;
+    } catch (e) {
+      const err = job.error || (e && e.kind ? e : { kind: 'bug', msg: String((e && e.message) || e) });
+      dlAbort(job, err);
+      job.err = err;
+      job.state = err.kind === 'cancel' ? 'cancelled' : 'error';
+      await sink.abort();
+    }
+    render();
+    return job.state;
+  }
+
+  function dlStatus(T) {
+    const j = dlJob;
+    if (!j) return '';
+    if (j.state === 'run') {
+      const pct = j.total ? Math.min(99.9, j.done / j.total * 100) : 0;
+      const sp = j.hist.length ? j.hist.slice(-3).reduce((a, x) => a + x, 0) / Math.min(3, j.hist.length) : 0;
+      const eta = sp > 0 && j.total ? (j.total - j.done) / sp : null;
+      const via = [].concat.apply([], j.files.map(f => f.hosts)).filter(h => h.bytes)
+        .sort((a, b) => b.bytes - a.bytes).map(h => shortHost(h.host));
+      return T.dlRun(pct.toFixed(1), fmtBytes(sp) + '/s', eta == null ? '…' : fmtDur(eta)) +
+        (via.length ? ' · ' + Array.from(new Set(via)).slice(0, 3).join('+') : '') + (!j.sink.file ? ' · ' + T.dlMem : '');
+    }
+    if (j.state === 'done') return T.dlDone(j.sink.name, fmtBytes(j.sink.pos), fmtDur(j.secs || 0));
+    if (j.state === 'cancelled') return T.dlCancelled;
+    return T.dlFail((T.dlWhy[j.err.kind] || j.err.kind) + (j.err.msg ? ' (' + j.err.msg + ')' : ''));
+  }
+
+  // The download part of the panel lives in its own element: rebuilt only when
+  // the offered streams change, so an open <select> is not reset every second.
+  let dlSig = '';
+  function renderDl() {
+    const el = root && root.querySelector('.dl');
+    if (!el) return;
+    const T = L();
+    const g = dlGroup();
+    const run = !!(dlJob && dlJob.state === 'run');
+    const sig = [uiLang(), g ? g.id + ':' + g.video.length + ':' + g.audio.length : '', run, dlSel.v, dlSel.a].join('|');
+    if (sig !== dlSig) {
+      dlSig = sig;
+      let html = '<h4>' + T.dl + '</h4>';
+      const lists = g && !g.durl ? dlLists(g) : null;
+      if (!g) html += '<div class="muted">' + T.dlNeedPlay + '</div>';
+      else if (!lists || (!lists.video.length && !lists.audio.length)) html += '<div class="muted">' + T.dlNoDash + '</div>';
+      else {
+        const opt = function (f, sel) {
+          const est = (f.meta.bw || 0) * (g.duration || 0) / 8;
+          return '<option value="' + esc(f.path) + '"' + (f.path === sel ? ' selected' : '') + '>' +
+            esc(dlName(f) + (f.kind === 'video' ? ' · ' + (f.meta.bw / 1e6).toFixed(2) + ' Mbps' : '') + (est ? ' · ≈' + fmtBytes(est) : '')) + '</option>';
+        };
+        const vSel = (lists.video.find(f => f.path === dlSel.v) || lists.video.find(f => f === current.video) || lists.video[0] || {}).path;
+        const aSel = (lists.audio.find(f => f.path === dlSel.a) || lists.audio.find(f => f === current.audio) || lists.audio[0] || {}).path;
+        const dis = run ? ' disabled' : '';
+        if (lists.video.length) html += '<div class="dlrow"><span>' + T.dlV + '</span><select data-dl="v"' + dis + '>' + lists.video.map(f => opt(f, vSel)).join('') + '</select></div>';
+        if (lists.audio.length) html += '<div class="dlrow"><span>' + T.dlA + '</span><select data-dl="a"' + dis + '>' + lists.audio.map(f => opt(f, aSel)).join('') + '</select></div>';
+        const off = c => c ? '' : ' disabled';
+        html += '<div class="btns">' + (run ? '<button data-act="dl-cancel">' + T.dlCancel + '</button>'
+          : '<button data-act="dl-av"' + off(lists.video.length && lists.audio.length) + '>' + T.dlBoth + '</button>' +
+            '<button data-act="dl-v"' + off(lists.video.length) + '>' + T.dlVideoOnly + '</button>' +
+            '<button data-act="dl-a"' + off(lists.audio.length) + '>' + T.dlAudioOnly + '</button>') + '</div>' +
+          '<div class="dlst"></div><div class="muted note">' + T.dlNote + '</div>';
+      }
+      el.innerHTML = html;
+    }
+    const st = el.querySelector('.dlst');
+    if (st) {
+      st.textContent = dlStatus(T);
+      st.className = 'dlst ' + (!dlJob ? 'muted' : dlJob.state === 'error' ? 'warn' : dlJob.state === 'done' ? 'good' : 'muted');
+    }
+  }
+
   // ---- UI -------------------------------------------------------------------
 
   let host = null;
@@ -2038,7 +2950,13 @@
       '.lang button{margin:0;padding:1px 7px;font-size:11px;border-radius:5px}' +
       '.lang button.on{background:#00aeec;color:#fff}' +
       '.btns{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}.btns button{margin:0}' +
-      '</style><div class="wrap"><div class="panel"></div><div class="pill"><span class="dot"></span><span class="txt"></span></div></div>';
+      'button:disabled{opacity:.45;cursor:default}button:disabled:hover{background:#2b323d}' +
+      '.dl{margin-top:4px;border-top:1px solid #313945;padding-top:2px}' +
+      '.dlrow{display:flex;align-items:center;gap:8px;margin:3px 0}.dlrow span{width:3.5em;color:#93a0ac;flex:none}' +
+      'select{flex:1;min-width:0;font:12px system-ui,"Microsoft YaHei",sans-serif;background:#2b323d;color:#e8edf2;border:0;border-radius:6px;padding:3px 6px}' +
+      '.dlst{margin-top:6px;word-break:break-all}.note{margin-top:4px;font-size:11px}' +
+      '</style><div class="wrap"><div class="panel"><div class="main"></div><div class="dl"></div></div>' +
+      '<div class="pill"><span class="dot"></span><span class="txt"></span></div></div>';
     root.querySelector('.txt').textContent = '⚡ ' + L().idle;
     root.querySelector('.pill').addEventListener('click', function () {
       panelOpen = !panelOpen;
@@ -2070,6 +2988,17 @@
         render();
       } else if (act === 'export') {
         exportHistory();
+      } else if (act === 'dl-av' || act === 'dl-v' || act === 'dl-a') {
+        dlStart(act.slice(3)).catch(function () {}); // opens the save dialog inside this click
+      } else if (act === 'dl-cancel') {
+        if (dlJob && dlJob.state === 'run') dlAbort(dlJob, { kind: 'cancel' });
+      }
+    });
+    root.querySelector('.panel').addEventListener('change', function (e) {
+      const k = e.target && e.target.getAttribute && e.target.getAttribute('data-dl');
+      if (k) {
+        dlSel[k] = e.target.value;
+        renderDl();
       }
     });
     document.body.appendChild(host);
@@ -2086,10 +3015,11 @@
     wrap.className = 'wrap ' + cls + (panelOpen ? ' open' : '');
     const rate = fs && fsRate(fs);
     const T = L();
-    root.querySelector('.txt').textContent = !cfg.enabled ? '⚡ ' + T.paused
+    const dlPct = dlJob && dlJob.state === 'run' ? ' · ⬇ ' + (dlJob.total ? Math.min(99, Math.floor(dlJob.done / dlJob.total * 100)) : 0) + '%' : '';
+    root.querySelector('.txt').textContent = (!cfg.enabled ? '⚡ ' + T.paused
       : !fs ? '⚡ ' + T.idle
         : '⚡ ' + (cls === 'mainland' ? T.mainland + ' ' : cls === 'native' ? T.native + ' ' : '') + routeName(fs) +
-          (rate ? ' · ' + rate.toFixed(0) + ' Mbps' : '');
+          (rate ? ' · ' + rate.toFixed(0) + ' Mbps' : '')) + dlPct;
     if (!panelOpen) return;
 
     const recentFiles = Array.from(new Set(files.values()))
@@ -2119,7 +3049,7 @@
     const cur = uiLang();
     const langs = [['zh', '中'], ['en', 'EN'], ['ja', '日']]
       .map(p => '<button data-lang="' + p[0] + '"' + (p[0] === cur ? ' class="on"' : '') + '>' + p[1] + '</button>').join('');
-    root.querySelector('.panel').innerHTML =
+    root.querySelector('.main').innerHTML =
       '<div class="hd"><b>' + T.brand + '</b> <span class="muted">v' + VERSION + '</span><span class="lang">' + langs + '</span></div>' +
       '<h4>' + T.files + '</h4><table>' + (rows || '<tr><td class="muted">' + T.noVideo + '</td></tr>') + '</table>' + qoe +
       '<h4>' + T.mirrors + '</h4><table>' + ml + '</table>' +
@@ -2129,13 +3059,14 @@
       '<button data-act="multi">' + T.multi + ((loadJson(CFG_KEY) || {}).multi === false ? T.off : T.on) + '</button>' +
       '<button data-act="reset">' + T.reset + '</button>' +
       '<button data-act="export">' + T.exportLog + '</button></div>';
+    renderDl();
   }
 
   function uiLoop() {
     buildUi();
     try { document.querySelectorAll('video').forEach(watchVideo); } catch (_) {}
     if (sess && sess.rec.id !== pageId()) closeSession(); // moved to another video in place
-    if (root && (current.video || !cfg.enabled)) render();
+    if (root && (current.video || !cfg.enabled || dlJob)) render();
   }
   setInterval(uiLoop, 1000);
 
@@ -2148,6 +3079,11 @@
     stats,
     logs,
     register,
+    // download(mode, { v, a, sink }) — sink: fileSink(handle) or any { pos, write, patch, finish, abort }.
+    download: dlStart,
+    downloadJob: () => dlJob,
+    cancelDownload: () => dlJob && dlAbort(dlJob, { kind: 'cancel' }),
+    fileSink,
     history: function () { saveSession(); return loadHistory(); },
     clearHistory: function () { try { localStorage.removeItem(HIST_KEY); } catch (_) {} if (sess) sess.dirty = true; },
     exportHistory,
